@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -85,6 +84,27 @@
             color: var(--accent-color);
         }
 
+        /* Search input */
+        .search-wrap {
+            margin-left: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search {
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            min-width: 220px;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .search::placeholder { color: var(--text-secondary); }
+
         /* Hero Section */
         .hero {
             padding: 6rem 5%;
@@ -141,6 +161,7 @@
             transition: transform 0.3s ease, border-color 0.3s ease;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         .card:hover {
@@ -157,6 +178,7 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         /* Topographic pattern generator for card images */
@@ -177,6 +199,7 @@
             font-size: 0.9rem;
             letter-spacing: 2px;
             z-index: 1;
+            pointer-events: none;
         }
 
         .card-content {
@@ -232,6 +255,31 @@
             border-color: var(--danger-color);
         }
 
+        /* Favorite star */
+        .fav {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.12s ease;
+            font-size: 18px;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+        .fav.active {
+            background: linear-gradient(135deg, rgba(210,153,34,0.15), rgba(210,153,34,0.05));
+            color: var(--accent-color);
+            transform: scale(1.06);
+            box-shadow: 0 4px 10px rgba(210,153,34,0.08);
+        }
+
         /* Toast Notification System */
         #toast-container {
             position: fixed;
@@ -260,6 +308,51 @@
             transform: translateX(0);
         }
 
+        /* Modal preview */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            padding: 20px;
+        }
+        .modal-backdrop.show { display: flex; }
+        .modal {
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            max-width: 920px;
+            width: 100%;
+            padding: 1rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+        }
+        .modal .modal-header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:0.5rem;
+        }
+        .modal .modal-body {
+            background:#0b0f13;
+            height:420px;
+            border-radius:6px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:var(--text-secondary);
+            font-family:var(--font-mono);
+        }
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
         /* Footer */
         footer {
             text-align: center;
@@ -276,13 +369,20 @@
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.5rem; }
             nav { display: none; } /* Simplified for mobile */
+            .search { min-width: 140px; }
+            .modal .modal-body { height: 260px; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">Mortal Games</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div class="logo">Mortal Games</div>
+            <div class="search-wrap">
+                <input id="site-search" class="search" type="search" placeholder="Search deployments (press /)" aria-label="Search deployments">
+            </div>
+        </div>
         <nav>
             <a href="#games">Armory</a>
             <a href="#intel">Intel</a>
@@ -301,40 +401,43 @@
             
             <div class="grid">
                 <!-- Game 1 -->
-                <article class="card">
-                    <div class="card-image-placeholder">
-                        <span>MAP_DATA: NATIONS_I</span>
+                <article class="card" data-title="Battles of Nations I">
+                    <div class="card-image-placeholder" data-preview="Battles of Nations I — 3D Globe Preview">
+                        <img src="/019c8585-dc04-7a67-bb21-3177aa6d06b9 (1).png" alt="Battles of Nations I thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
                     </div>
+                    <div class="fav" role="button" aria-label="Favorite Battles of Nations I">☆</div>
                     <div class="card-content">
                         <h3 class="card-title">Battles of Nations I</h3>
-                        <div class="card-meta">Grand Strategy | 19th Century</div>
-                        <p class="card-desc">Lead your nation through the tumultuous industrial revolution. Manage domestic politics, secure colonial resources, and navigate complex diplomatic webs. Features a dynamic 3D globe with real-time troop maneuver capabilities and supply line topography.</p>
+                        <div class="card-meta">Grand Strategy | 20th Century</div>
+                        <p class="card-desc">Lead your Nation in the Mortal Game's First Game, Start in a Sattelite map and Hovering Country Bars, Expand in a Simple Way and Win.</p>
                         <button class="btn-download" data-game="Battles of Nations I">Initiate Download</button>
                     </div>
                 </article>
 
                 <!-- Game 2 -->
-                <article class="card">
-                    <div class="card-image-placeholder">
-                        <span>MAP_DATA: HOI_REDUMP</span>
+                <article class="card" data-title="Hearts of Iron: Redumped">
+                    <div class="card-image-placeholder" data-preview="Hearts of Iron: Redumped — Tactical Theatre Snapshot">
+                        <img src="/D3YOxv.png" alt="Hearts of Iron: Redumped thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
                     </div>
+                    <div class="fav" role="button" aria-label="Favorite Hearts of Iron: Redumped">☆</div>
                     <div class="card-content">
                         <h3 class="card-title">Hearts of Iron: Redumped</h3>
                         <div class="card-meta">Tactical Simulator | WWII</div>
-                        <p class="card-desc">A hardcore, community-architected revision of the classic WWII simulator. Experience unparalleled logistical depth, redesigned terrain debuffs, and an overhauled order-of-battle interface. The map is your weapon; logistics is your ammunition.</p>
+                        <p class="card-desc">A Simple, community-architected revision of the classic WWII simulator. Experience unparalleled logistical depth, redesigned terrain debuffs, and an overhauled order-of-battle interface. The map is your weapon; logistics is your ammunition.</p>
                         <button class="btn-download" data-game="Hearts of Iron: Redumped">Initiate Download</button>
                     </div>
                 </article>
 
                 <!-- Game 3 -->
-                <article class="card">
-                    <div class="card-image-placeholder">
-                        <span>MAP_DATA: SOVEREIGNTY</span>
+                <article class="card" data-title="Ages of Sovereignty">
+                    <div class="card-image-placeholder" data-preview="Age of Sovereignty — Interactive Parchment Map">
+                        <img src="/image (1).png" alt="Age of Sovereignty thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
                     </div>
+                    <div class="fav" role="button" aria-label="Favorite Age of Sovereignty">☆</div>
                     <div class="card-content">
                         <h3 class="card-title">Age of Sovereignty</h3>
-                        <div class="card-meta">Cartographic UI | Medieval</div>
-                        <p class="card-desc">Draw your borders in blood and ink. Operating entirely on a beautifully rendered, interactive parchment map, you must manage medieval feudal contracts, instigate religious crusades, and alter the literal geography of the old world.</p>
+                        <div class="card-meta">Cartographic UI | 2020-1914</div>
+                        <p class="card-desc">"The year is 2020. You lead your nation to glory — or ruin." Ages of Sovereignty is a New and Easiest grand strategy and geopolitical simulation game that puts players at the helm of modern nations. Heavily inspired by classic 4X and war-strategy titles, the game challenges players to dominate a global map through a complex blend of military conquest, economic dominance, and intricate diplomacy.  Starting in the year 2020, players can take control of over 100 dynamically simulated nations—from global superpowers like the United States and China to emerging regional actors—each possessing unique statistics for income, manpower, army size, and overall development</p>
                         <button class="btn-download" data-game="Age of Sovereignty">Initiate Download</button>
                     </div>
                 </article>
@@ -350,20 +453,42 @@
     <!-- Container for dynamic toast notifications -->
     <div id="toast-container"></div>
 
+    <!-- Modal for preview -->
+    <div id="modal" class="modal-backdrop" role="dialog" aria-hidden="true">
+        <div class="modal" role="document">
+            <div class="modal-header">
+                <strong id="modal-title">Preview</strong>
+                <button id="modal-close" class="modal-close" aria-label="Close preview">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">Preview content</div>
+        </div>
+    </div>
+
     <script>
         /**
          * Core Application Logic
-         * Handles interactive states and disabled download notifications.
+         * - Search/filter deployments
+         * - Favorite toggles persisted to localStorage
+         * - Image-preview modal on card-image click
+         * - Keyboard shortcuts: '/' focuses search, 'f' toggles first card favorite
+         * - Toast system reused for notifications
          */
         document.addEventListener('DOMContentLoaded', () => {
             const downloadButtons = document.querySelectorAll('.btn-download');
             const toastContainer = document.getElementById('toast-container');
+            const searchInput = document.getElementById('site-search');
+            const cards = Array.from(document.querySelectorAll('.card'));
+            const favButtons = Array.from(document.querySelectorAll('.fav'));
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalClose = document.getElementById('modal-close');
 
             // Notification Manager
-            const showNotification = (message) => {
+            const showNotification = (message, type = 'info') => {
                 const toast = document.createElement('div');
                 toast.className = 'toast';
-                toast.innerHTML = `<strong>ACCESS DENIED:</strong> ${message}`;
+                toast.innerHTML = (type === 'error' ? `<strong>ERROR:</strong> ` : `<strong>NOTICE:</strong> `) + message;
                 
                 toastContainer.appendChild(toast);
 
@@ -384,9 +509,294 @@
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     const gameName = btn.getAttribute('data-game');
-                    showNotification(`Downloads for [${gameName}] are currently disabled as a placeholder.`);
+                    showNotification(`Downloads for [${gameName}] are currently disabled as a placeholder.`, 'error');
                 });
             });
+
+            // Search / Filter
+            const applyFilter = (q) => {
+                const term = (q || '').trim().toLowerCase();
+                cards.forEach(card => {
+                    const title = (card.getAttribute('data-title') || '').toLowerCase();
+                    const desc = (card.querySelector('.card-desc')?.textContent || '').toLowerCase();
+                    const matches = !term || title.includes(term) || desc.includes(term);
+                    card.style.display = matches ? '' : 'none';
+                });
+            };
+
+            searchInput.addEventListener('input', (e) => applyFilter(e.target.value));
+
+            // Persist favorites
+            const STORAGE_KEY = 'mg:favs:v1';
+            const loadFavs = () => {
+                try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+            };
+            const saveFavs = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+
+            const favs = new Set(loadFavs());
+
+            const updateFavUI = () => {
+                favButtons.forEach(btn => {
+                    const card = btn.closest('.card');
+                    const id = card.getAttribute('data-title');
+                    if (favs.has(id)) {
+                        btn.classList.add('active');
+                        btn.textContent = '★';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.textContent = '☆';
+                    }
+                });
+            };
+
+            favButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const card = btn.closest('.card');
+                    const id = card.getAttribute('data-title');
+                    if (favs.has(id)) {
+                        favs.delete(id);
+                        showNotification(`Removed favorite: ${id}`);
+                    } else {
+                        favs.add(id);
+                        showNotification(`Added favorite: ${id}`);
+                    }
+                    saveFavs([...favs]);
+                    updateFavUI();
+                });
+            });
+
+            updateFavUI();
+
+            // Modal preview for images
+            const openPreview = (title, bodyText) => {
+                modalTitle.textContent = title;
+                modalBody.textContent = bodyText;
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+            };
+            const closePreview = () => {
+                modal.classList.remove('show');
+                modal.setAttribute('aria-hidden', 'true');
+            };
+
+            document.querySelectorAll('.card-image-placeholder').forEach(img => {
+                img.addEventListener('click', () => {
+                    const card = img.closest('.card');
+                    const title = card.getAttribute('data-title') || 'Preview';
+                    const previewText = img.getAttribute('data-preview') || 'Map preview';
+                    openPreview(title, previewText);
+                });
+            });
+
+            modalClose.addEventListener('click', closePreview);
+            modal.addEventListener('click', (e) => { if (e.target === modal) closePreview(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('show')) closePreview();
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // focus search on '/'
+                if (e.key === '/' && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                }
+                // toggle favorite of first visible card with 'f'
+                if (e.key.toLowerCase() === 'f' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    const firstVisible = cards.find(c => c.style.display !== 'none');
+                    if (firstVisible) {
+                        const id = firstVisible.getAttribute('data-title');
+                        if (favs.has(id)) {
+                            favs.delete(id);
+                            showNotification(`Removed favorite: ${id}`);
+                        } else {
+                            favs.add(id);
+                            showNotification(`Added favorite: ${id}`);
+                        }
+                        saveFavs([...favs]);
+                        updateFavUI();
+                    } else {
+                        showNotification('No visible deployments to favorite.');
+                    }
+                }
+            });
+
+            // Small accessibility: announce number of results on search
+            let lastAnnounce = '';
+            searchInput.addEventListener('input', () => {
+                const visible = cards.filter(c => c.style.display !== 'none').length;
+                const txt = `${visible} deployments visible`;
+                if (txt !== lastAnnounce) {
+                    lastAnnounce = txt;
+                    // small unobtrusive toast
+                    showNotification(txt);
+                }
+            });
+
+            // On load, announce persisted favorites count
+            if (favs.size) {
+                showNotification(`${favs.size} favorite(s) loaded from previous session.`);
+            }
+
+            /***** Decorative Interactive Panel (live styling controls) *****/
+            const createControlPanel = () => {
+                const panel = document.createElement('div');
+                panel.id = 'dec-panel';
+                panel.innerHTML = `
+                    <button id="dec-toggle" aria-expanded="false" title="Toggle decorations">⚙︎</button>
+                    <div id="dec-controls" aria-hidden="true">
+                        <label>Grid size <input type="range" id="dec-grid" min="12" max="80" value="30"></label>
+                        <label>Topo opacity <input type="range" id="dec-topo" min="0" max="100" value="30"></label>
+                        <label>Accent hue <input type="range" id="dec-hue" min="0" max="360" value="42"></label>
+                        <label>Card tilt <input type="range" id="dec-tilt" min="0" max="18" value="5"></label>
+                        <label><input type="checkbox" id="dec-parallax"> Parallax images</label>
+                        <button id="dec-reset">Reset</button>
+                    </div>
+                `;
+                document.body.appendChild(panel);
+
+                // Basic styles injected for panel
+                const style = document.createElement('style');
+                style.textContent = `
+                    #dec-panel { position: fixed; left: 14px; bottom: 18px; z-index:1200; font-family:var(--font-main); }
+                    #dec-toggle { width:44px; height:44px; border-radius:10px; border:1px solid var(--surface-border); background:var(--surface-color); color:var(--text-primary); box-shadow:0 6px 18px rgba(0,0,0,0.6); cursor:pointer; }
+                    #dec-controls { display:none; margin-top:8px; width:220px; background:rgba(11,15,19,0.95); border:1px solid var(--surface-border); padding:10px; border-radius:8px; color:var(--text-secondary); font-size:13px; }
+                    #dec-controls label { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px; }
+                    #dec-controls input[type="range"] { width:110px; }
+                    #dec-controls button { width:100%; padding:6px; border-radius:6px; background:transparent; border:1px solid var(--surface-border); color:var(--text-secondary); cursor:pointer; }
+                `;
+                document.head.appendChild(style);
+
+                const toggle = panel.querySelector('#dec-toggle');
+                const controls = panel.querySelector('#dec-controls');
+                toggle.addEventListener('click', () => {
+                    const open = controls.style.display === 'block';
+                    controls.style.display = open ? 'none' : 'block';
+                    toggle.setAttribute('aria-expanded', String(!open));
+                    controls.setAttribute('aria-hidden', String(open));
+                });
+
+                // Elements
+                const grid = panel.querySelector('#dec-grid');
+                const topo = panel.querySelector('#dec-topo');
+                const hue = panel.querySelector('#dec-hue');
+                const tilt = panel.querySelector('#dec-tilt');
+                const parallax = panel.querySelector('#dec-parallax');
+                const reset = panel.querySelector('#dec-reset');
+
+                // Handlers
+                const updateGrid = (v) => {
+                    document.body.style.backgroundSize = `${v}px ${v}px`;
+                };
+                const updateTopo = (v) => {
+                    // update the card-image-placeholder ::after opacity by setting a CSS variable
+                    document.documentElement.style.setProperty('--topo-opacity', String(v/100));
+                    // fallback update for existing elements
+                    document.querySelectorAll('.card-image-placeholder::after');
+                };
+                const updateHue = (v) => {
+                    // convert hue to tactical gold-ish by adjusting accent color
+                    const h = v;
+                    // set accent color using HSL to CSS variable
+                    document.documentElement.style.setProperty('--accent-color', `hsl(${h} 80% 52%)`);
+                    document.documentElement.style.setProperty('--accent-hover', `hsl(${h} 85% 62%)`);
+                };
+                const updateTilt = (v) => {
+                    document.documentElement.style.setProperty('--card-tilt', `${v}deg`);
+                    // apply tilt to cards
+                    document.querySelectorAll('.card').forEach(c => {
+                        c.style.transition = 'transform 0.25s ease';
+                        c.style.transform = `translateY(-5px) perspective(800px) rotateX(${v/3}deg) rotateY(${v/6}deg)`;
+                        // reset subtle hover
+                        c.addEventListener('mouseleave', () => c.style.transform = '');
+                    });
+                };
+
+                // Parallax handler
+                let parallaxEnabled = false;
+                const enableParallax = (on) => {
+                    parallaxEnabled = on;
+                    const imgs = Array.from(document.querySelectorAll('.card-image-placeholder img, .card-image-placeholder'));
+                    if (on) {
+                        document.addEventListener('mousemove', parallaxMove);
+                        imgs.forEach(el => el.style.transition = 'transform 0.12s ease-out');
+                    } else {
+                        document.removeEventListener('mousemove', parallaxMove);
+                        imgs.forEach(el => el.style.transform = '');
+                    }
+                };
+                const parallaxMove = (e) => {
+                    const imgs = Array.from(document.querySelectorAll('.card-image-placeholder img, .card-image-placeholder'));
+                    const w = window.innerWidth, h = window.innerHeight;
+                    const cx = (e.clientX / w) - 0.5;
+                    const cy = (e.clientY / h) - 0.5;
+                    imgs.forEach(el => {
+                        const depth = el.tagName === 'IMG' ? 10 : 4;
+                        const tx = cx * depth;
+                        const ty = cy * depth;
+                        el.style.transform = `translate(${tx}px, ${ty}px) rotateX(${ -cy * 3 }deg) rotateY(${ cx * 3 }deg)`;
+                    });
+                };
+
+                // Wire inputs
+                grid.addEventListener('input', (e) => updateGrid(e.target.value));
+                topo.addEventListener('input', (e) => updateTopo(e.target.value));
+                hue.addEventListener('input', (e) => updateHue(e.target.value));
+                tilt.addEventListener('input', (e) => updateTilt(e.target.value));
+                parallax.addEventListener('change', (e) => enableParallax(e.target.checked));
+                reset.addEventListener('click', () => {
+                    grid.value = 30; topo.value = 30; hue.value = 42; tilt.value = 5; parallax.checked = false;
+                    updateGrid(30); updateTopo(30); updateHue(42); updateTilt(5); enableParallax(false);
+                    showNotification('Decorations reset to defaults.');
+                });
+
+                // Initialize CSS variable for topo opacity and card tilt
+                document.documentElement.style.setProperty('--topo-opacity', '0.3');
+                document.documentElement.style.setProperty('--card-tilt', '5deg');
+
+                // Small persistent storage for panel prefs
+                const DEC_KEY = 'mg:decoration:v1';
+                const savePrefs = () => {
+                    const prefs = { grid: grid.value, topo: topo.value, hue: hue.value, tilt: tilt.value, parallax: parallax.checked };
+                    try { localStorage.setItem(DEC_KEY, JSON.stringify(prefs)); } catch {}
+                };
+                const loadPrefs = () => {
+                    try {
+                        const p = JSON.parse(localStorage.getItem(DEC_KEY) || '{}');
+                        if (p.grid) grid.value = p.grid;
+                        if (p.topo) topo.value = p.topo;
+                        if (p.hue) hue.value = p.hue;
+                        if (p.tilt) tilt.value = p.tilt;
+                        if (typeof p.parallax === 'boolean') parallax.checked = p.parallax;
+                        updateGrid(grid.value); updateTopo(topo.value); updateHue(hue.value); updateTilt(tilt.value); enableParallax(parallax.checked);
+                    } catch {}
+                };
+                // autosave on change
+                [grid, topo, hue, tilt, parallax].forEach(el => el.addEventListener('input', savePrefs));
+                parallax.addEventListener('change', savePrefs);
+
+                loadPrefs();
+            };
+
+            // Inject CSS patch for topographic overlay variable usage
+            const injectTopoCSS = () => {
+                const s = document.createElement('style');
+                s.textContent = `
+                    .card-image-placeholder::after {
+                        background-image: 
+                            radial-gradient(ellipse at 20% 30%, transparent 20%, rgba(210, 153, 34, 0.1) 21%, transparent 22%),
+                            radial-gradient(ellipse at 80% 70%, transparent 30%, rgba(210, 153, 34, 0.1) 31%, transparent 32%);
+                        opacity: var(--topo-opacity, 0.3);
+                        transition: opacity 0.18s linear;
+                    }
+                `;
+                document.head.appendChild(s);
+            };
+
+            injectTopoCSS();
+            createControlPanel();
+
         });
     </script>
 </body>
