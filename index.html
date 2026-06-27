@@ -1,803 +1,1760 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mortal Games</title>
-    <style>
-        /* CSS Variables for consistent theming */
-        :root {
-            --bg-color: #0d1117;
-            --surface-color: #161b22;
-            --surface-border: #30363d;
-            --text-primary: #c9d1d9;
-            --text-secondary: #8b949e;
-            --accent-color: #d29922; /* Tactical Gold/Amber */
-            --accent-hover: #e3b341;
-            --danger-color: #f85149;
-            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            --font-mono: 'Courier New', Courier, monospace;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mortal Games</title>
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0d1219;
+  --surface2: #111820;
+  --border: #1e2a38;
+  --border2: #253040;
+  --gold: #d4a843;
+  --gold2: #f0c060;
+  --gold-dim: rgba(212,168,67,0.12);
+  --red: #c0392b;
+  --red-glow: rgba(192,57,43,0.25);
+  --text: #c8d4e0;
+  --text2: #6a7f96;
+  --text3: #3d5268;
+  --mono: 'Courier New', monospace;
+  --ui: 'Segoe UI', system-ui, sans-serif;
+  --radar-green: #00ff7f;
+  --radar-dim: rgba(0,255,127,0.08);
+  --scan-color: rgba(212,168,67,0.04);
+  --topo-op: 0.3;
+  --grid-sz: 28px;
+  --hue-shift: 0deg;
+}
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: var(--font-main);
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            line-height: 1.6;
-            /* Tactical map grid background */
-            background-image: 
-                linear-gradient(rgba(48, 54, 61, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(48, 54, 61, 0.3) 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
+html { scroll-behavior: smooth; }
 
-        /* Header & Navigation */
-        header {
-            background-color: rgba(13, 17, 23, 0.9);
-            border-bottom: 1px solid var(--surface-border);
-            padding: 1.5rem 5%;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(5px);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+body {
+  font-family: var(--ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: none;
+}
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+/* ─── CUSTOM CURSOR ─── */
+#cursor-ring {
+  position: fixed; width: 36px; height: 36px;
+  border: 2px solid var(--gold); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width 0.15s, height 0.15s, opacity 0.15s, border-color 0.15s;
+  mix-blend-mode: screen;
+}
+#cursor-dot {
+  position: fixed; width: 6px; height: 6px;
+  background: var(--gold); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+}
+#cursor-ring.hover { width: 56px; height: 56px; border-color: var(--gold2); }
 
-        .logo::before {
-            content: '';
-            display: inline-block;
-            width: 15px;
-            height: 15px;
-            background-color: var(--accent-color);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--accent-color);
-        }
+/* ─── PARTICLE CANVAS ─── */
+#particle-canvas {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  opacity: 0.55;
+}
 
-        nav a {
-            color: var(--text-primary);
-            text-decoration: none;
-            margin-left: 20px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: color 0.2s ease;
-        }
+/* ─── BACKGROUND LAYERS ─── */
+.bg-layers {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+}
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(30,42,56,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,42,56,0.5) 1px, transparent 1px);
+  background-size: var(--grid-sz) var(--grid-sz);
+  animation: gridDrift 60s linear infinite;
+}
+@keyframes gridDrift { from { background-position: 0 0; } to { background-position: var(--grid-sz) var(--grid-sz); } }
 
-        nav a:hover {
-            color: var(--accent-color);
-        }
+.bg-scan {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--scan-color) 0px, var(--scan-color) 1px,
+    transparent 1px, transparent 4px
+  );
+  animation: scanMove 8s linear infinite;
+}
+@keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 100px; } }
 
-        /* Search input */
-        .search-wrap {
-            margin-left: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+.bg-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+}
 
-        .search {
-            background: var(--surface-color);
-            border: 1px solid var(--surface-border);
-            color: var(--text-primary);
-            padding: 0.5rem 0.75rem;
-            border-radius: 6px;
-            min-width: 220px;
-            font-size: 0.95rem;
-            outline: none;
-        }
+/* ─── CINEMATIC INTRO ─── */
+#intro {
+  position: fixed; inset: 0; z-index: 5000;
+  background: #000;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: var(--mono);
+  transition: opacity 0.8s ease;
+}
+#intro.fade-out { opacity: 0; pointer-events: none; }
 
-        .search::placeholder { color: var(--text-secondary); }
+.intro-bar {
+  width: 360px; height: 3px;
+  background: var(--border);
+  margin-bottom: 2rem;
+  position: relative; overflow: hidden;
+}
+.intro-bar::after {
+  content: '';
+  position: absolute; left: -100%; top: 0; width: 100%; height: 100%;
+  background: var(--gold);
+  animation: introLoad 2.2s ease forwards;
+}
+@keyframes introLoad { to { left: 0; } }
 
-        /* Hero Section */
-        .hero {
-            padding: 6rem 5%;
-            text-align: center;
-            border-bottom: 1px solid var(--surface-border);
-            background: radial-gradient(circle at center, rgba(210, 153, 34, 0.05) 0%, transparent 70%);
-        }
+.intro-title {
+  font-size: 2.8rem; font-weight: 900; letter-spacing: 10px;
+  color: #fff; text-transform: uppercase;
+  text-shadow: 0 0 40px rgba(212,168,67,0.6);
+  margin-bottom: 1rem;
+}
+.intro-status {
+  font-size: 0.8rem; letter-spacing: 4px; color: var(--gold);
+  min-height: 1.2em;
+}
+.intro-line {
+  width: 360px; height: 1px;
+  background: var(--border2);
+  margin: 1.5rem 0;
+}
 
-        .hero h1 {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
-            font-family: var(--font-mono);
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            text-shadow: 0 0 20px rgba(210, 153, 34, 0.3);
-        }
+/* ─── HEADER ─── */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: rgba(8,12,16,0.85);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  padding: 0 5%;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+}
 
-        .hero p {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin: 0 auto;
-        }
+.logo {
+  font-family: var(--mono); font-size: 1.05rem; font-weight: 700;
+  letter-spacing: 4px; text-transform: uppercase; color: #fff;
+  display: flex; align-items: center; gap: 10px;
+  user-select: none;
+}
+.logo-pulse {
+  width: 10px; height: 10px; background: var(--gold); border-radius: 50%;
+  box-shadow: 0 0 12px var(--gold);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
 
-        /* Games Grid */
-        .games-container {
-            padding: 4rem 5%;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+nav { display: flex; align-items: center; gap: 1.5rem; }
+nav a {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text2); text-decoration: none;
+  transition: color 0.2s;
+  position: relative;
+}
+nav a::after {
+  content: ''; position: absolute; bottom: -3px; left: 0; right: 0;
+  height: 1px; background: var(--gold); transform: scaleX(0);
+  transform-origin: left; transition: transform 0.25s ease;
+}
+nav a:hover { color: var(--gold); }
+nav a:hover::after { transform: scaleX(1); }
 
-        .section-title {
-            font-family: var(--font-mono);
-            font-size: 2rem;
-            margin-bottom: 2rem;
-            color: var(--accent-color);
-            border-bottom: 2px solid var(--surface-border);
-            padding-bottom: 0.5rem;
-            display: inline-block;
-        }
+.header-right { display: flex; align-items: center; gap: 1rem; }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-        }
+#site-search {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-family: var(--mono); font-size: 0.78rem;
+  letter-spacing: 1px; outline: none; width: 200px;
+  transition: border-color 0.2s;
+}
+#site-search:focus { border-color: var(--gold); }
+#site-search::placeholder { color: var(--text3); }
 
-        /* Game Card Styling */
-        .card {
-            background-color: var(--surface-color);
-            border: 1px solid var(--surface-border);
-            border-radius: 8px;
-            overflow: hidden;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+#music-btn {
+  font-family: var(--mono); font-size: 0.7rem; letter-spacing: 2px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text2); padding: 0.35rem 0.7rem; border-radius: 4px;
+  cursor: none; transition: all 0.2s;
+}
+#music-btn:hover { border-color: var(--gold); color: var(--gold); }
 
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-color);
-        }
+/* ─── HERO ─── */
+.hero {
+  position: relative; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 80px 5% 4rem; z-index: 1;
+  overflow: hidden;
+}
 
-        .card-image-placeholder {
-            height: 200px;
-            background-color: #21262d;
-            border-bottom: 1px solid var(--surface-border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
+.hero-earth-wrap {
+  position: relative; width: 260px; height: 260px; margin-bottom: 2rem;
+}
+.earth-ring {
+  position: absolute; inset: -20px;
+  border: 1px solid rgba(212,168,67,0.15);
+  border-radius: 50%;
+  animation: spin 20s linear infinite;
+}
+.earth-ring2 {
+  position: absolute; inset: -40px;
+  border: 1px dashed rgba(212,168,67,0.07);
+  border-radius: 50%;
+  animation: spin 35s linear infinite reverse;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Topographic pattern generator for card images */
-        .card-image-placeholder::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                radial-gradient(ellipse at 20% 30%, transparent 20%, rgba(210, 153, 34, 0.1) 21%, transparent 22%),
-                radial-gradient(ellipse at 80% 70%, transparent 30%, rgba(210, 153, 34, 0.1) 31%, transparent 32%);
-            background-size: 100px 100px;
-            opacity: 0.5;
-        }
+#globe-canvas {
+  width: 260px; height: 260px; border-radius: 50%;
+  box-shadow: 0 0 60px rgba(212,168,67,0.2), 0 0 120px rgba(212,168,67,0.08);
+  display: block;
+}
 
-        .card-image-placeholder span {
-            font-family: var(--font-mono);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            z-index: 1;
-            pointer-events: none;
-        }
+.hero-title {
+  font-family: var(--mono); font-size: clamp(2.2rem, 5vw, 4.5rem);
+  font-weight: 900; letter-spacing: 8px; text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(212,168,67,0.25);
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+.hero-title .char {
+  display: inline-block;
+  animation: metallic 3s ease-in-out infinite;
+}
+.hero-title .char:nth-child(odd) { animation-delay: 0.1s; }
+.hero-title .char:nth-child(even) { animation-delay: 0.3s; }
+@keyframes metallic {
+  0%,100% { color: #fff; text-shadow: 0 0 30px rgba(212,168,67,0.2); }
+  50% { color: var(--gold2); text-shadow: 0 0 40px rgba(240,192,96,0.5); }
+}
 
-        .card-content {
-            padding: 1.5rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
+.hero-sub {
+  font-size: 0.9rem; letter-spacing: 3px; color: var(--text2);
+  text-transform: uppercase; margin-bottom: 0.5rem;
+}
+.hero-desc {
+  font-size: 1rem; color: var(--text2); max-width: 560px;
+  margin: 0.75rem auto 2rem;
+}
+.hero-cta {
+  font-family: var(--mono); font-size: 0.82rem; letter-spacing: 3px;
+  text-transform: uppercase; text-decoration: none;
+  color: var(--gold); border: 1px solid var(--gold);
+  padding: 0.75rem 2rem; border-radius: 4px;
+  display: inline-block;
+  transition: background 0.25s, color 0.25s, box-shadow 0.25s;
+  position: relative; overflow: hidden;
+}
+.hero-cta::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--gold); transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.hero-cta:hover::before { transform: translateX(0); }
+.hero-cta:hover { color: #000; box-shadow: 0 0 30px rgba(212,168,67,0.4); }
+.hero-cta span { position: relative; z-index: 1; }
 
-        .card-title {
-            font-size: 1.4rem;
-            margin-bottom: 0.5rem;
-            color: #fff;
-        }
+/* Light rays */
+.hero-rays {
+  position: absolute; inset: 0; pointer-events: none;
+  background: conic-gradient(
+    from 220deg at 50% 50%,
+    transparent 0deg,
+    rgba(212,168,67,0.015) 10deg,
+    transparent 20deg,
+    transparent 80deg,
+    rgba(212,168,67,0.015) 90deg,
+    transparent 100deg
+  );
+  animation: rayRotate 30s linear infinite;
+}
+@keyframes rayRotate { to { transform: rotate(360deg); } }
 
-        .card-meta {
-            font-size: 0.8rem;
-            color: var(--accent-color);
-            margin-bottom: 1rem;
-            font-family: var(--font-mono);
-            text-transform: uppercase;
-        }
+/* ─── LIVE STATS PANEL ─── */
+.stats-section {
+  position: relative; z-index: 1;
+  padding: 3rem 5%;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.stats-inner {
+  max-width: 900px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--border);
+}
+.stat-item {
+  background: var(--surface2);
+  padding: 2rem 1.5rem; text-align: center;
+}
+.stat-num {
+  font-family: var(--mono); font-size: 2.2rem; font-weight: 700;
+  color: var(--gold); display: block; margin-bottom: 0.25rem;
+  letter-spacing: 2px;
+}
+.stat-label {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text3);
+}
 
-        .card-desc {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-            flex-grow: 1;
-        }
+/* ─── GAMES SECTION ─── */
+.games-section {
+  position: relative; z-index: 1;
+  padding: 4rem 5%;
+  max-width: 1400px; margin: 0 auto;
+}
+.section-header {
+  display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2.5rem;
+  border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+}
+.section-label {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 4px;
+  text-transform: uppercase; color: var(--text3);
+}
+.section-title {
+  font-family: var(--mono); font-size: 1.6rem; color: var(--gold);
+  letter-spacing: 3px; text-transform: uppercase;
+}
 
-        /* Button Styling */
-        .btn-download {
-            display: block;
-            width: 100%;
-            padding: 0.8rem;
-            text-align: center;
-            background-color: transparent;
-            color: var(--text-secondary);
-            border: 1px dashed var(--text-secondary);
-            border-radius: 4px;
-            cursor: not-allowed;
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
+/* ─── GAME CARDS ─── */
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
 
-        .btn-download:hover {
-            background-color: rgba(248, 81, 73, 0.1);
-            color: var(--danger-color);
-            border-color: var(--danger-color);
-        }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  will-change: transform;
+}
+.card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(212,168,67,0.1);
+}
+/* animated border on hover */
+.card::before {
+  content: ''; position: absolute; inset: 0;
+  border: 1px solid var(--gold); border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none; z-index: 3;
+  background: linear-gradient(
+    135deg,
+    rgba(212,168,67,0.06) 0%,
+    transparent 50%,
+    rgba(212,168,67,0.03) 100%
+  );
+}
+.card:hover::before { opacity: 1; }
 
-        /* Favorite star */
-        .fav {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.15s ease, transform 0.12s ease;
-            font-size: 18px;
-            color: var(--text-secondary);
-            user-select: none;
-        }
-        .fav.active {
-            background: linear-gradient(135deg, rgba(210,153,34,0.15), rgba(210,153,34,0.05));
-            color: var(--accent-color);
-            transform: scale(1.06);
-            box-shadow: 0 4px 10px rgba(210,153,34,0.08);
-        }
+/* shine */
+.card-shine {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.06) 0%, transparent 60%);
+  opacity: 0; transition: opacity 0.25s;
+  border-radius: 6px;
+}
+.card:hover .card-shine { opacity: 1; }
 
-        /* Toast Notification System */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
+.card-image {
+  height: 210px;
+  background: #0a0f15;
+  border-bottom: 1px solid var(--border);
+  position: relative; overflow: hidden;
+  cursor: none;
+}
+.card-image img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.5s ease;
+}
+.card:hover .card-image img { transform: scale(1.06); }
 
-        .toast {
-            background-color: var(--surface-color);
-            border-left: 4px solid var(--danger-color);
-            color: var(--text-primary);
-            padding: 1rem 1.5rem;
-            margin-top: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-        }
+/* screenshot carousel overlay */
+.card-screenshots {
+  position: absolute; inset: 0; display: flex; z-index: 2;
+  opacity: 0; transition: opacity 0.3s;
+}
+.card:hover .card-screenshots { opacity: 1; }
+.screenshot-dot {
+  position: absolute; bottom: 8px; z-index: 5;
+  display: flex; gap: 5px; left: 50%; transform: translateX(-50%);
+}
+.screenshot-dot span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.3); transition: background 0.2s;
+  cursor: none;
+}
+.screenshot-dot span.active { background: var(--gold); }
 
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
+.card-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 5;
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 2px;
+  background: var(--gold); color: #000; padding: 2px 8px; border-radius: 2px;
+  text-transform: uppercase;
+}
+.card-badge.online { background: #27ae60; color: #fff; }
+.card-badge.coming { background: var(--surface); color: var(--gold); border: 1px solid var(--gold); }
 
-        /* Modal preview */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1100;
-            padding: 20px;
-        }
-        .modal-backdrop.show { display: flex; }
-        .modal {
-            background: var(--surface-color);
-            border: 1px solid var(--surface-border);
-            border-radius: 10px;
-            max-width: 920px;
-            width: 100%;
-            padding: 1rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
-        }
-        .modal .modal-header {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:0.5rem;
-        }
-        .modal .modal-body {
-            background:#0b0f13;
-            height:420px;
-            border-radius:6px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:var(--text-secondary);
-            font-family:var(--font-mono);
-        }
-        .modal-close {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1rem;
-            cursor: pointer;
-        }
+.fav-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  width: 34px; height: 34px; border-radius: 6px;
+  background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--text3); cursor: none;
+  transition: all 0.2s; user-select: none;
+}
+.fav-btn:hover { border-color: var(--gold); color: var(--gold); }
+.fav-btn.active { color: var(--gold); background: rgba(212,168,67,0.12); border-color: var(--gold); }
 
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 2rem;
-            border-top: 1px solid var(--surface-border);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-family: var(--font-mono);
-            margin-top: 2rem;
-            background-color: var(--surface-color);
-        }
+.card-content { padding: 1.25rem; flex-grow: 1; display: flex; flex-direction: column; }
+.card-title { font-size: 1.25rem; color: #fff; margin-bottom: 0.4rem; letter-spacing: 1px; }
+.card-meta {
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 2px;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 0.6rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.card-status {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 2px;
+  color: #27ae60; margin-bottom: 1rem;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.card-status.offline { color: var(--text3); }
+.card-status.offline .status-dot { animation: none; }
 
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            nav { display: none; } /* Simplified for mobile */
-            .search { min-width: 140px; }
-            .modal .modal-body { height: 260px; }
-        }
-    </style>
+.card-desc { color: var(--text2); font-size: 0.88rem; line-height: 1.6; flex-grow: 1; margin-bottom: 1.25rem; }
+
+.card-stars { color: var(--gold); font-size: 0.8rem; margin-bottom: 0.75rem; letter-spacing: 2px; }
+
+.card-version {
+  font-family: var(--mono); font-size: 0.6rem; color: var(--text3);
+  letter-spacing: 2px; margin-bottom: 1rem;
+}
+
+.card-btns { display: flex; gap: 0.6rem; }
+.btn-play {
+  flex: 1; padding: 0.65rem; text-align: center;
+  background: var(--gold); color: #000;
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; border: none; border-radius: 4px; cursor: none;
+  font-weight: 700; transition: background 0.2s, box-shadow 0.2s;
+  position: relative; overflow: hidden;
+}
+.btn-play:hover { background: var(--gold2); box-shadow: 0 0 20px rgba(212,168,67,0.4); }
+.btn-details {
+  padding: 0.65rem 1rem; text-align: center;
+  background: transparent; color: var(--text2);
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; border: 1px solid var(--border); border-radius: 4px; cursor: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-details:hover { border-color: var(--gold); color: var(--gold); }
+
+/* download progress */
+.download-bar-wrap {
+  display: none; margin-top: 0.75rem;
+  background: var(--surface2); border-radius: 4px; overflow: hidden;
+  height: 6px; position: relative;
+}
+.download-bar-fill {
+  height: 100%; background: var(--gold);
+  width: 0%; transition: width 0.3s linear;
+  box-shadow: 0 0 8px var(--gold);
+}
+.download-label {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--gold);
+  letter-spacing: 2px; margin-top: 0.3rem; display: none;
+}
+
+/* ─── RADAR SECTION ─── */
+.radar-section {
+  position: relative; z-index: 1;
+  padding: 4rem 5%;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; gap: 4rem;
+}
+.radar-wrap {
+  flex-shrink: 0; position: relative; width: 220px; height: 220px;
+}
+#radar-canvas {
+  width: 220px; height: 220px; border-radius: 50%;
+  border: 1px solid rgba(0,255,127,0.2);
+  box-shadow: 0 0 30px rgba(0,255,127,0.08), inset 0 0 30px rgba(0,0,0,0.5);
+}
+.radar-blips { position: absolute; inset: 0; pointer-events: none; }
+.blip {
+  position: absolute; width: 8px; height: 8px;
+  background: var(--radar-green); border-radius: 50%;
+  box-shadow: 0 0 10px var(--radar-green);
+  transform: translate(-50%,-50%);
+  animation: blipFade 3s ease-in-out infinite;
+}
+@keyframes blipFade {
+  0%,100% { opacity: 0; transform: translate(-50%,-50%) scale(0.5); }
+  40%,60% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+
+.radar-info { flex-grow: 1; }
+.radar-title {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 4px;
+  color: var(--radar-green); text-transform: uppercase; margin-bottom: 1rem;
+}
+.radar-detected { margin-top: 1rem; }
+.radar-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 0.78rem; letter-spacing: 1px;
+}
+.radar-item-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--radar-green);
+  box-shadow: 0 0 8px var(--radar-green);
+}
+.radar-item-name { color: var(--text); flex-grow: 1; }
+.radar-item-status { color: var(--radar-green); font-size: 0.6rem; letter-spacing: 2px; }
+
+/* ─── NEWS SECTION ─── */
+.news-section {
+  position: relative; z-index: 1;
+  padding: 4rem 5%;
+  border-top: 1px solid var(--border);
+  max-width: 1400px; margin: 0 auto;
+}
+.news-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem; margin-top: 2rem;
+}
+.news-card {
+  background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 1.25rem;
+  transition: border-color 0.25s;
+}
+.news-card:hover { border-color: var(--gold); }
+.news-tag {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 3px;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 0.5rem;
+}
+.news-title { font-size: 1rem; color: #fff; margin-bottom: 0.5rem; }
+.news-date { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); letter-spacing: 2px; margin-bottom: 0.75rem; }
+.news-excerpt { font-size: 0.85rem; color: var(--text2); line-height: 1.55; margin-bottom: 1rem; }
+.news-read {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 2px;
+  color: var(--gold); text-decoration: none; text-transform: uppercase;
+  transition: letter-spacing 0.2s;
+}
+.news-read:hover { letter-spacing: 4px; }
+
+/* ─── TIMELINE SECTION ─── */
+.timeline-section {
+  position: relative; z-index: 1;
+  padding: 4rem 5%;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+.timeline {
+  max-width: 700px; margin: 2rem auto 0;
+  position: relative;
+}
+.timeline::before {
+  content: ''; position: absolute; left: 80px; top: 0; bottom: 0;
+  width: 1px; background: var(--border2);
+}
+.timeline-item {
+  display: flex; gap: 2rem; margin-bottom: 2.5rem;
+  position: relative; opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+.timeline-item.visible { opacity: 1; transform: translateX(0); }
+.timeline-year {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 2px;
+  color: var(--gold); width: 60px; flex-shrink: 0; padding-top: 3px;
+  text-align: right;
+}
+.timeline-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 12px var(--gold);
+  flex-shrink: 0; margin-top: 4px; margin-left: 14px;
+  position: relative; z-index: 1;
+}
+.timeline-content { flex-grow: 1; }
+.timeline-name { font-size: 1rem; color: #fff; margin-bottom: 0.25rem; }
+.timeline-desc { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+
+/* ─── TOAST ─── */
+#toast-container {
+  position: fixed; bottom: 80px; right: 20px; z-index: 3000;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  background: var(--surface2); border-left: 3px solid var(--gold);
+  color: var(--text); padding: 0.8rem 1.2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  border-radius: 4px; font-family: var(--mono); font-size: 0.78rem;
+  letter-spacing: 1px; opacity: 0; transform: translateX(30px);
+  transition: all 0.3s ease; max-width: 320px;
+}
+.toast.error { border-left-color: var(--red); }
+.toast.show { opacity: 1; transform: translateX(0); }
+
+/* ─── ACHIEVEMENT POPUP ─── */
+#achievement {
+  position: fixed; top: 80px; right: 20px; z-index: 2999;
+  background: var(--surface2); border: 1px solid var(--gold);
+  border-radius: 8px; padding: 1rem 1.25rem;
+  display: flex; align-items: center; gap: 1rem;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.7), 0 0 20px rgba(212,168,67,0.15);
+  opacity: 0; transform: translateX(120%); transition: all 0.4s ease;
+  max-width: 300px;
+}
+#achievement.show { opacity: 1; transform: translateX(0); }
+.ach-icon { font-size: 2rem; }
+.ach-label {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 3px;
+  color: var(--gold); text-transform: uppercase;
+}
+.ach-name { font-size: 0.9rem; color: #fff; margin-top: 2px; }
+
+/* ─── FOOTER ─── */
+footer {
+  position: relative; z-index: 1;
+  background: var(--surface2); border-top: 1px solid var(--border);
+  text-align: center; padding: 2rem;
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 2px;
+  color: var(--text3); margin-top: 4rem;
+}
+footer a { color: var(--text3); text-decoration: none; }
+footer .footer-keys {
+  margin-top: 0.75rem; font-size: 0.6rem; color: var(--text3); opacity: 0.6;
+}
+footer kbd {
+  background: var(--surface); border: 1px solid var(--border2);
+  padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 0.6rem;
+}
+
+/* ─── CONTROL PANEL ─── */
+#ctrl-panel {
+  position: fixed; left: 16px; bottom: 20px; z-index: 2000;
+  font-family: var(--mono);
+}
+#ctrl-toggle {
+  width: 42px; height: 42px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); font-size: 1.1rem; cursor: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  transition: border-color 0.2s, color 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+#ctrl-toggle:hover { border-color: var(--gold); color: var(--gold); }
+#ctrl-box {
+  display: none; position: absolute; bottom: 50px; left: 0;
+  width: 240px; background: rgba(8,12,16,0.97);
+  border: 1px solid var(--border2); border-radius: 8px; padding: 1rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+#ctrl-box.open { display: block; }
+.ctrl-title {
+  font-size: 0.6rem; letter-spacing: 4px; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;
+}
+.ctrl-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.6rem; font-size: 0.7rem; color: var(--text2);
+  gap: 8px;
+}
+.ctrl-row input[type=range] { width: 110px; accent-color: var(--gold); }
+.ctrl-reset {
+  width: 100%; padding: 5px; border-radius: 4px;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text3); font-family: var(--mono); font-size: 0.65rem;
+  letter-spacing: 2px; cursor: none; margin-top: 0.4rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.ctrl-reset:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ─── EASTER EGG OVERLAY ─── */
+#egg-overlay {
+  position: fixed; inset: 0; z-index: 4999;
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.5s;
+  background: transparent;
+}
+#egg-overlay.active { opacity: 1; pointer-events: auto; }
+.egg-hoi4 { background: linear-gradient(135deg, rgba(60,0,0,0.85), rgba(30,20,0,0.85)); }
+.egg-paradox { --gold: #00d4ff; --gold2: #00aaff; background: rgba(0,20,40,0.85); }
+.egg-mortal { background: radial-gradient(ellipse at center, rgba(60,0,60,0.8) 0%, rgba(8,12,16,0.95) 70%); }
+#egg-text {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-family: var(--mono); font-size: 1.5rem; letter-spacing: 6px;
+  color: var(--gold); text-transform: uppercase;
+  text-shadow: 0 0 30px var(--gold);
+  animation: eggPulse 1s ease-in-out infinite;
+  text-align: center;
+}
+@keyframes eggPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
+#egg-close {
+  position: absolute; top: 20px; right: 30px;
+  font-family: var(--mono); font-size: 0.7rem; letter-spacing: 3px;
+  color: var(--text2); cursor: pointer; background: none; border: none;
+}
+
+/* ─── MODAL ─── */
+#modal-backdrop {
+  position: fixed; inset: 0; z-index: 3500;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#modal-backdrop.show { display: flex; }
+#modal {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; width: 100%; max-width: 800px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  overflow: hidden;
+}
+.modal-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.modal-hdr h3 { font-family: var(--mono); font-size: 0.85rem; letter-spacing: 3px; color: var(--gold); }
+#modal-close {
+  background: none; border: none; color: var(--text2); font-size: 1.1rem; cursor: none;
+  transition: color 0.2s;
+}
+#modal-close:hover { color: var(--gold); }
+.modal-body-area {
+  background: #060a0e; height: 380px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); font-family: var(--mono); font-size: 0.8rem; letter-spacing: 2px;
+}
+
+/* ─── MISC ─── */
+.section-divider {
+  width: 40px; height: 2px; background: var(--gold); margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .hero-title { font-size: 2rem; letter-spacing: 4px; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr); }
+  .radar-section { flex-direction: column; gap: 2rem; }
+  nav { display: none; }
+  #site-search { width: 140px; }
+  body { cursor: auto; }
+  #cursor-ring, #cursor-dot { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+</style>
 </head>
 <body>
 
-    <header>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div class="logo">Mortal Games</div>
-            <div class="search-wrap">
-                <input id="site-search" class="search" type="search" placeholder="Search deployments (press /)" aria-label="Search deployments">
-            </div>
-        </div>
-        <nav>
-            <a href="#games">Armory</a>
-            <a href="#intel">Intel</a>
-            <a href="#support">Comms</a>
-        </nav>
-    </header>
+<!-- Custom Cursor -->
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
 
-    <main>
-        <section class="hero">
-            <h1>Mortal Games</h1>
-            <p>The Official Site of Mortal Games.Command empires, rewrite borders, and execute grand strategies. The ultimate repository for hardcore cartographic and geopolitical simulations.</p>
-        </section>
+<!-- Particle Canvas -->
+<canvas id="particle-canvas"></canvas>
 
-        <section id="games" class="games-container">
-            <h2 class="section-title">Active Deployments</h2>
-            
-            <div class="grid">
-                <!-- Game 1 -->
-                <article class="card" data-title="Battles of Nations I">
-                    <div class="card-image-placeholder" data-preview="Battles of Nations I  3D Globe Preview">
-                        <img src="bon1.png" alt="Battles of Nations I thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
-                    </div>
-                    <div class="fav" role="button" aria-label="Favorite Battles of Nations I">☆</div>
-                    <div class="card-content">
-                        <h3 class="card-title">Battles of Nations I</h3>
-                        <div class="card-meta">Grand Strategy | 20th Century</div>
-                        <p class="card-desc">The Classic Franchise of Mortal Games. Lead your Nation in the Modern World, Start in a Sattelite map and Hovering Country Bars, Expand in a Simple Way and Win. You command your own nation. Build factories, recruit armies, research technology via the National Focus Tree, and conquer — or be conquered. Full economy system, unit management, AI opponents that think, ally, and surrender.</p>
-                        <button class="btn-download" data-game="Battles of Nations I">Initiate Download</button>
-                    </div>
-                </article>
+<!-- Background Layers -->
+<div class="bg-layers" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="bg-scan"></div>
+  <div class="bg-vignette"></div>
+</div>
 
-                <!-- Game 2 -->
-                <article class="card" data-title="Hearts of Iron: Redumped">
-                    <div class="card-image-placeholder" data-preview="Hearts of Iron: Redumped  Tactical Theatre Snapshot">
-                        <img src="hoir.png" alt="Hearts of Iron: Redumped thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
-                    </div>
-                    <div class="fav" role="button" aria-label="Favorite Hearts of Iron: Redumped">☆</div>
-                    <div class="card-content">
-                        <h3 class="card-title">Hearts of Iron: Redumped</h3>
-                        <div class="card-meta">Tactical Simulator | WWII</div>
-                        <p class="card-desc">A Simple, community-architected revision of the classic WWII simulator. Experience unparalleled logistical depth, redesigned terrain debuffs, and an overhauled order-of-battle interface. The map is your weapon; logistics is your ammunition.</p>
-                        <button class="btn-download" data-game="Hearts of Iron: Redumped">Initiate Download</button>
-                    </div>
-                </article>
+<!-- Cinematic Intro -->
+<div id="intro" role="presentation" aria-hidden="true">
+  <div class="intro-bar"></div>
+  <div class="intro-title">MORTAL GAMES</div>
+  <div class="intro-line"></div>
+  <div id="intro-status" class="intro-status"></div>
+</div>
 
-                <!-- Game 3 -->
-                <article class="card" data-title="Ages of Sovereignty">
-                    <div class="card-image-placeholder" data-preview="Age of Sovereignty  Interactive Parchment Map">
-                        <img src="aos.png" alt="Age of Sovereignty thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
-                    </div>
-                    <div class="fav" role="button" aria-label="Favorite Age of Sovereignty">☆</div>
-                    <div class="card-content">
-                        <h3 class="card-title">Age of Sovereignty</h3>
-                        <div class="card-meta">Cartographic UI | 2020-1914</div>
-                        <p class="card-desc">"The year is 2020. You lead your nation to glory or ruin." Ages of Sovereignty is a New and Easiest grand strategy and geopolitical simulation game that puts players at the helm of modern nations. Heavily inspired by classic 4X and war-strategy titles, the game challenges players to dominate a global map through a complex blend of military conquest, economic dominance, and intricate diplomacy.  Starting in the year 2020, players can take control of over 100 dynamically simulated nations from global superpowers like the United States and China to emerging regional actorseach possessing unique statistics for income, manpower, army size, and overall development</p>
-                        <button class="btn-download" data-game="Age of Sovereignty">Initiate Download</button>
-                    </div>
-                </article>
-            </div>
-        </section>
-    </main>
+<!-- Easter Egg Overlay -->
+<div id="egg-overlay" aria-hidden="true">
+  <div id="egg-text"></div>
+  <button id="egg-close">[ ESC ] CLOSE</button>
+</div>
 
-    <footer>
-        <p>&copy; 2026 Mortal Games All rights reserved.</p>
-        <p></p>
-    </footer>
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-pulse"></div>
+    MORTAL GAMES
+  </div>
+  <nav>
+    <a href="#games">Armory</a>
+    <a href="#radar">Intel</a>
+    <a href="#news">Comms</a>
+    <a href="#timeline">Archives</a>
+  </nav>
+  <div class="header-right">
+    <input id="site-search" type="search" placeholder="Search (press /)" aria-label="Search games">
+    <button id="music-btn" title="Toggle background music">🔊 OFF</button>
+  </div>
+</header>
 
-    <!-- Container for dynamic toast notifications -->
-    <div id="toast-container"></div>
+<!-- Hero Section -->
+<section class="hero" id="top">
+  <div class="hero-rays" aria-hidden="true"></div>
 
-    <!-- Modal for preview -->
-    <div id="modal" class="modal-backdrop" role="dialog" aria-hidden="true">
-        <div class="modal" role="document">
-            <div class="modal-header">
-                <strong id="modal-title">Preview</strong>
-                <button id="modal-close" class="modal-close" aria-label="Close preview">✕</button>
-            </div>
-            <div class="modal-body" id="modal-body">Preview content</div>
-        </div>
+  <div class="hero-earth-wrap" aria-hidden="true">
+    <div class="earth-ring"></div>
+    <div class="earth-ring2"></div>
+    <canvas id="globe-canvas" width="260" height="260"></canvas>
+  </div>
+
+  <div class="hero-sub">Grand Strategy Studio</div>
+  <h1 class="hero-title" id="hero-title"></h1>
+  <p class="hero-desc">Command empires, rewrite borders, execute grand strategies. The ultimate destination for hardcore cartographic and geopolitical simulations.</p>
+  <a href="#games" class="hero-cta"><span>Explore Games</span></a>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section" aria-label="Live statistics">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <span class="stat-num" data-target="3">0</span>
+      <span class="stat-label">Games Released</span>
     </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="1248922">0</span>
+      <span class="stat-label">Total Downloads</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="188">0</span>
+      <span class="stat-label">Countries Played</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="12481">0</span>
+      <span class="stat-label">Current Players</span>
+    </div>
+  </div>
+</section>
 
-    <script>
-        /**
-         * Core Application Logic
-         * - Search/filter deployments
-         * - Favorite toggles persisted to localStorage
-         * - Image-preview modal on card-image click
-         * - Keyboard shortcuts: '/' focuses search, 'f' toggles first card favorite
-         * - Toast system reused for notifications
-         */
-        document.addEventListener('DOMContentLoaded', () => {
-            const downloadButtons = document.querySelectorAll('.btn-download');
-            const toastContainer = document.getElementById('toast-container');
-            const searchInput = document.getElementById('site-search');
-            const cards = Array.from(document.querySelectorAll('.card'));
-            const favButtons = Array.from(document.querySelectorAll('.fav'));
-            const modal = document.getElementById('modal');
-            const modalTitle = document.getElementById('modal-title');
-            const modalBody = document.getElementById('modal-body');
-            const modalClose = document.getElementById('modal-close');
+<!-- Games Section -->
+<section id="games" class="games-section">
+  <div class="section-header">
+    <div>
+      <div class="section-divider"></div>
+      <div class="section-label">Active Deployments</div>
+      <h2 class="section-title">Our Games</h2>
+    </div>
+  </div>
 
-            // Notification Manager
-            const showNotification = (message, type = 'info') => {
-                const toast = document.createElement('div');
-                toast.className = 'toast';
-                toast.innerHTML = (type === 'error' ? `<strong>ERROR:</strong> ` : `<strong>NOTICE:</strong> `) + message;
-                
-                toastContainer.appendChild(toast);
+  <div class="grid">
 
-                // Trigger animation reflow
-                requestAnimationFrame(() => {
-                    toast.classList.add('show');
-                });
+    <!-- Game 1: Battles of Nations I -->
+    <article class="card" data-title="Battles of Nations I">
+      <div class="card-shine"></div>
+      <div class="card-image" data-preview="Battles of Nations I — 3D Globe Preview">
+        <img src="bon1.png" alt="Battles of Nations I" loading="eager">
+        <div class="card-screenshots"></div>
+        <div class="screenshot-dot"></div>
+        <span class="card-badge online">Online</span>
+      </div>
+      <div class="fav-btn" role="button" aria-label="Favourite Battles of Nations I" tabindex="0">☆</div>
+      <div class="card-content">
+        <h3 class="card-title">Battles of Nations I</h3>
+        <div class="card-meta">Grand Strategy <span style="color:var(--text3)">|</span> 20th Century</div>
+        <div class="card-status">
+          <span class="status-dot"></span> ONLINE — v1.4.8
+        </div>
+        <div class="card-stars">★★★★★</div>
+        <p class="card-desc">The Classic Franchise of Mortal Games. Lead your Nation in the Modern World — build factories, recruit armies, research technology via the National Focus Tree, and conquer or be conquered. Full economy system, AI opponents that think, ally, and surrender.</p>
+        <div class="card-btns">
+          <button class="btn-play" data-game="Battles of Nations I">▶ Play</button>
+          <button class="btn-details" data-game="Battles of Nations I" data-action="details">Details</button>
+        </div>
+        <div class="download-bar-wrap"><div class="download-bar-fill"></div></div>
+        <div class="download-label"></div>
+      </div>
+    </article>
 
-                // Self-destruct after 3 seconds
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                    setTimeout(() => toast.remove(), 300); // Wait for transition
-                }, 3000);
-            };
+    <!-- Game 2: Hearts of Iron: Redumped -->
+    <article class="card" data-title="Hearts of Iron: Redumped">
+      <div class="card-shine"></div>
+      <div class="card-image" data-preview="Hearts of Iron: Redumped — Tactical Theatre Snapshot">
+        <img src="hoir.png" alt="Hearts of Iron: Redumped" loading="lazy">
+        <div class="card-screenshots"></div>
+        <div class="screenshot-dot"></div>
+        <span class="card-badge">WWII</span>
+      </div>
+      <div class="fav-btn" role="button" aria-label="Favourite Hearts of Iron: Redumped" tabindex="0">☆</div>
+      <div class="card-content">
+        <h3 class="card-title">Hearts of Iron: Redumped</h3>
+        <div class="card-meta">Tactical Simulator <span style="color:var(--text3)">|</span> WWII</div>
+        <div class="card-status">
+          <span class="status-dot"></span> ONLINE — v2.1.0
+        </div>
+        <div class="card-stars">★★★★☆</div>
+        <p class="card-desc">A community-architected revision of the classic WWII simulator. Experience unparalleled logistical depth, redesigned terrain debuffs, and an overhauled order-of-battle interface. The map is your weapon; logistics is your ammunition.</p>
+        <div class="card-btns">
+          <button class="btn-play" data-game="Hearts of Iron: Redumped">▶ Play</button>
+          <button class="btn-details" data-game="Hearts of Iron: Redumped" data-action="details">Details</button>
+        </div>
+        <div class="download-bar-wrap"><div class="download-bar-fill"></div></div>
+        <div class="download-label"></div>
+      </div>
+    </article>
 
-            // Bind events to download buttons
-            downloadButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const gameName = btn.getAttribute('data-game');
-                    showNotification(`Downloads for [${gameName}] are currently disabled as a placeholder.`, 'error');
-                });
-            });
+    <!-- Game 3: Age of Sovereignty -->
+    <article class="card" data-title="Age of Sovereignty">
+      <div class="card-shine"></div>
+      <div class="card-image" data-preview="Age of Sovereignty — Interactive Parchment Map">
+        <img src="aos.png" alt="Age of Sovereignty" loading="lazy">
+        <div class="card-screenshots"></div>
+        <div class="screenshot-dot"></div>
+        <span class="card-badge coming">Coming Soon</span>
+      </div>
+      <div class="fav-btn" role="button" aria-label="Favourite Age of Sovereignty" tabindex="0">☆</div>
+      <div class="card-content">
+        <h3 class="card-title">Age of Sovereignty</h3>
+        <div class="card-meta">Cartographic UI <span style="color:var(--text3)">|</span> 2020–1914</div>
+        <div class="card-status offline">
+          <span class="status-dot"></span> IN DEVELOPMENT
+        </div>
+        <div class="card-stars">★★★★★</div>
+        <p class="card-desc">The year is 2020. You lead your nation to glory or ruin. Control over 100 dynamically simulated nations — from superpowers to emerging regional actors — each with unique income, manpower, army size, and development statistics.</p>
+        <div class="card-btns">
+          <button class="btn-play" data-game="Age of Sovereignty">▶ Wishlist</button>
+          <button class="btn-details" data-game="Age of Sovereignty" data-action="details">Details</button>
+        </div>
+        <div class="download-bar-wrap"><div class="download-bar-fill"></div></div>
+        <div class="download-label"></div>
+      </div>
+    </article>
 
-            // Search / Filter
-            const applyFilter = (q) => {
-                const term = (q || '').trim().toLowerCase();
-                cards.forEach(card => {
-                    const title = (card.getAttribute('data-title') || '').toLowerCase();
-                    const desc = (card.querySelector('.card-desc')?.textContent || '').toLowerCase();
-                    const matches = !term || title.includes(term) || desc.includes(term);
-                    card.style.display = matches ? '' : 'none';
-                });
-            };
+  </div>
+</section>
 
-            searchInput.addEventListener('input', (e) => applyFilter(e.target.value));
+<!-- Radar Section -->
+<section id="radar" class="radar-section">
+  <div class="radar-wrap">
+    <canvas id="radar-canvas" width="220" height="220"></canvas>
+    <div class="radar-blips" id="radar-blips"></div>
+  </div>
+  <div class="radar-info">
+    <div class="section-divider"></div>
+    <div class="radar-title">⚡ TACTICAL RADAR — SCANNING...</div>
+    <p style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem">Active signal detection across all deployment zones. Real-time operational status.</p>
+    <div class="radar-detected">
+      <div class="radar-item">
+        <div class="radar-item-dot"></div>
+        <span class="radar-item-name">Battles of Nations I</span>
+        <span class="radar-item-status">● ONLINE</span>
+      </div>
+      <div class="radar-item">
+        <div class="radar-item-dot"></div>
+        <span class="radar-item-name">Hearts of Iron: Redumped</span>
+        <span class="radar-item-status">● ONLINE</span>
+      </div>
+      <div class="radar-item">
+        <div class="radar-item-dot" style="background:#f39c12;box-shadow:0 0 8px #f39c12"></div>
+        <span class="radar-item-name">Age of Sovereignty</span>
+        <span class="radar-item-status" style="color:#f39c12">◎ IN DEV</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-            // Persist favorites
-            const STORAGE_KEY = 'mg:favs:v1';
-            const loadFavs = () => {
-                try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-            };
-            const saveFavs = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+<!-- News Section -->
+<section id="news" class="news-section">
+  <div class="section-divider"></div>
+  <div class="section-label">Latest Intel</div>
+  <h2 class="section-title">Dispatch</h2>
+  <div class="news-grid">
+    <div class="news-card">
+      <div class="news-tag">Age of Sovereignty</div>
+      <h3 class="news-title">Dev Diary #12 — New Economic System</h3>
+      <div class="news-date">2026-06-15</div>
+      <p class="news-excerpt">The new trade route mechanics overhaul how nations interact financially. Embargo chains, tariff wars, and resource scarcity now cascade through your entire economy.</p>
+      <a href="#" class="news-read">Read Dispatch →</a>
+    </div>
+    <div class="news-card">
+      <div class="news-tag">Battles of Nations I</div>
+      <h3 class="news-title">Patch 1.8 — AI Overhaul</h3>
+      <div class="news-date">2026-05-28</div>
+      <p class="news-excerpt">Enemy AI now coordinates multi-front offensives, requests reinforcements dynamically, and adapts to player strategies after each engagement.</p>
+      <a href="#" class="news-read">Read Dispatch →</a>
+    </div>
+    <div class="news-card">
+      <div class="news-tag">Hearts of Iron: Redumped</div>
+      <h3 class="news-title">Community Map Pack v3.0</h3>
+      <div class="news-date">2026-05-10</div>
+      <p class="news-excerpt">The community has contributed 14 new theatre maps, including the Eastern Pacific and Sub-Saharan Africa with historically accurate terrain modifiers.</p>
+      <a href="#" class="news-read">Read Dispatch →</a>
+    </div>
+  </div>
+</section>
 
-            const favs = new Set(loadFavs());
+<!-- Timeline Section -->
+<section id="timeline" class="timeline-section">
+  <div class="section-divider"></div>
+  <div class="section-label" style="text-align:center">Company History</div>
+  <h2 class="section-title" style="text-align:center">Archives</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-year">2022</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-name">Battles of Nations I</div>
+        <div class="timeline-desc">Our debut title. A satellite-view grand strategy that launched Mortal Games into the scene. First release, first victories.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2024</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-name">Hearts of Iron: Redumped</div>
+        <div class="timeline-desc">A community-driven WWII simulator built from the ground up. Logistical depth meets modern UI design.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-year">2026</div>
+      <div class="timeline-dot" style="background:var(--text3);box-shadow:0 0 12px var(--text3)"></div>
+      <div class="timeline-content">
+        <div class="timeline-name">Age of Sovereignty</div>
+        <div class="timeline-desc">Our most ambitious project yet. Modern-era geopolitical simulation with over 100 nations. In active development.</div>
+      </div>
+    </div>
+  </div>
+</section>
 
-            const updateFavUI = () => {
-                favButtons.forEach(btn => {
-                    const card = btn.closest('.card');
-                    const id = card.getAttribute('data-title');
-                    if (favs.has(id)) {
-                        btn.classList.add('active');
-                        btn.textContent = '★';
-                    } else {
-                        btn.classList.remove('active');
-                        btn.textContent = '☆';
-                    }
-                });
-            };
+<!-- Footer -->
+<footer>
+  <p>© 2026 MORTAL GAMES — ALL RIGHTS RESERVED</p>
+  <p class="footer-keys" style="margin-top:0.75rem">
+    <kbd>/</kbd> Search &nbsp; <kbd>F</kbd> Favourite &nbsp;
+    <kbd>HOI4</kbd> <kbd>PARADOX</kbd> <kbd>MORTAL</kbd> Easter eggs
+  </p>
+</footer>
 
-            favButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const card = btn.closest('.card');
-                    const id = card.getAttribute('data-title');
-                    if (favs.has(id)) {
-                        favs.delete(id);
-                        showNotification(`Removed favorite: ${id}`);
-                    } else {
-                        favs.add(id);
-                        showNotification(`Added favorite: ${id}`);
-                    }
-                    saveFavs([...favs]);
-                    updateFavUI();
-                });
-            });
+<!-- Toast Container -->
+<div id="toast-container" aria-live="polite"></div>
 
-            updateFavUI();
+<!-- Achievement Popup -->
+<div id="achievement" aria-live="polite">
+  <div class="ach-icon" id="ach-icon">🏆</div>
+  <div>
+    <div class="ach-label">Achievement Unlocked</div>
+    <div class="ach-name" id="ach-name">Explorer</div>
+  </div>
+</div>
 
-            // Modal preview for images
-            const openPreview = (title, bodyText) => {
-                modalTitle.textContent = title;
-                modalBody.textContent = bodyText;
-                modal.classList.add('show');
-                modal.setAttribute('aria-hidden', 'false');
-            };
-            const closePreview = () => {
-                modal.classList.remove('show');
-                modal.setAttribute('aria-hidden', 'true');
-            };
+<!-- Modal -->
+<div id="modal-backdrop" role="dialog" aria-hidden="true">
+  <div id="modal">
+    <div class="modal-hdr">
+      <h3 id="modal-title">PREVIEW</h3>
+      <button id="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body-area" id="modal-body">[ NO SIGNAL ]</div>
+  </div>
+</div>
 
-            document.querySelectorAll('.card-image-placeholder').forEach(img => {
-                img.addEventListener('click', () => {
-                    const card = img.closest('.card');
-                    const title = card.getAttribute('data-title') || 'Preview';
-                    const previewText = img.getAttribute('data-preview') || 'Map preview';
-                    openPreview(title, previewText);
-                });
-            });
+<!-- Control Panel -->
+<div id="ctrl-panel">
+  <button id="ctrl-toggle" title="Visual controls">⚙</button>
+  <div id="ctrl-box">
+    <div class="ctrl-title">Visual Controls</div>
+    <div class="ctrl-row">Grid Size <input type="range" id="c-grid" min="14" max="80" value="28"></div>
+    <div class="ctrl-row">Accent Hue <input type="range" id="c-hue" min="0" max="360" value="42"></div>
+    <div class="ctrl-row">Card Glow <input type="range" id="c-glow" min="0" max="100" value="40"></div>
+    <div class="ctrl-row">Scan Speed <input type="range" id="c-scan" min="2" max="30" value="8"></div>
+    <button class="ctrl-reset" id="c-reset">Reset to Default</button>
+  </div>
+</div>
 
-            modalClose.addEventListener('click', closePreview);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closePreview(); });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && modal.classList.contains('show')) closePreview();
-            });
+<audio id="bg-music" loop>
+  <!-- No src — tone-generated in JS -->
+</audio>
 
-            // Keyboard shortcuts
-            document.addEventListener('keydown', (e) => {
-                // focus search on '/'
-                if (e.key === '/' && document.activeElement !== searchInput) {
-                    e.preventDefault();
-                    searchInput.focus();
-                    searchInput.select();
-                }
-                // toggle favorite of first visible card with 'f'
-                if (e.key.toLowerCase() === 'f' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                    const firstVisible = cards.find(c => c.style.display !== 'none');
-                    if (firstVisible) {
-                        const id = firstVisible.getAttribute('data-title');
-                        if (favs.has(id)) {
-                            favs.delete(id);
-                            showNotification(`Removed favorite: ${id}`);
-                        } else {
-                            favs.add(id);
-                            showNotification(`Added favorite: ${id}`);
-                        }
-                        saveFavs([...favs]);
-                        updateFavUI();
-                    } else {
-                        showNotification('No visible deployments to favorite.');
-                    }
-                }
-            });
+<script>
+// ═══════════════════════════════════════════════════════
+// MORTAL GAMES — Interactive Engine
+// ═══════════════════════════════════════════════════════
 
-            // Small accessibility: announce number of results on search
-            let lastAnnounce = '';
-            searchInput.addEventListener('input', () => {
-                const visible = cards.filter(c => c.style.display !== 'none').length;
-                const txt = `${visible} deployments visible`;
-                if (txt !== lastAnnounce) {
-                    lastAnnounce = txt;
-                    // small unobtrusive toast
-                    showNotification(txt);
-                }
-            });
+const qs = (s, ctx = document) => ctx.querySelector(s);
+const qsa = (s, ctx = document) => Array.from(ctx.querySelectorAll(s));
+const root = document.documentElement;
 
-            // On load, announce persisted favorites count
-            if (favs.size) {
-                showNotification(`${favs.size} favorite(s) loaded from previous session.`);
-            }
+// ─── TOAST ───
+const toastContainer = qs('#toast-container');
+function toast(msg, type = 'info', dur = 3000) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' error' : '');
+  t.innerHTML = `<strong>${type === 'error' ? 'NOTICE' : 'INTEL'}:</strong> ${msg}`;
+  toastContainer.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, dur);
+}
 
-            /***** Decorative Interactive Panel (live styling controls) *****/
-            const createControlPanel = () => {
-                const panel = document.createElement('div');
-                panel.id = 'dec-panel';
-                panel.innerHTML = `
-                    <button id="dec-toggle" aria-expanded="false" title="Toggle decorations">⚙︎</button>
-                    <div id="dec-controls" aria-hidden="true">
-                        <label>Grid size <input type="range" id="dec-grid" min="12" max="80" value="30"></label>
-                        <label>Topo opacity <input type="range" id="dec-topo" min="0" max="100" value="30"></label>
-                        <label>Accent hue <input type="range" id="dec-hue" min="0" max="360" value="42"></label>
-                        <label>Card tilt <input type="range" id="dec-tilt" min="0" max="18" value="5"></label>
-                        <label><input type="checkbox" id="dec-parallax"> Parallax images</label>
-                        <button id="dec-reset">Reset</button>
-                    </div>
-                `;
-                document.body.appendChild(panel);
+// ─── ACHIEVEMENT ───
+const achEl = qs('#achievement');
+const achIcon = qs('#ach-icon');
+const achName = qs('#ach-name');
+const achievements = new Set(JSON.parse(localStorage.getItem('mg:ach') || '[]'));
+function unlockAch(id, name, icon = '🏆') {
+  if (achievements.has(id)) return;
+  achievements.add(id);
+  localStorage.setItem('mg:ach', JSON.stringify([...achievements]));
+  achIcon.textContent = icon;
+  achName.textContent = name;
+  achEl.classList.add('show');
+  setTimeout(() => achEl.classList.remove('show'), 4000);
+}
 
-                // Basic styles injected for panel
-                const style = document.createElement('style');
-                style.textContent = `
-                    #dec-panel { position: fixed; left: 14px; bottom: 18px; z-index:1200; font-family:var(--font-main); }
-                    #dec-toggle { width:44px; height:44px; border-radius:10px; border:1px solid var(--surface-border); background:var(--surface-color); color:var(--text-primary); box-shadow:0 6px 18px rgba(0,0,0,0.6); cursor:pointer; }
-                    #dec-controls { display:none; margin-top:8px; width:220px; background:rgba(11,15,19,0.95); border:1px solid var(--surface-border); padding:10px; border-radius:8px; color:var(--text-secondary); font-size:13px; }
-                    #dec-controls label { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px; }
-                    #dec-controls input[type="range"] { width:110px; }
-                    #dec-controls button { width:100%; padding:6px; border-radius:6px; background:transparent; border:1px solid var(--surface-border); color:var(--text-secondary); cursor:pointer; }
-                `;
-                document.head.appendChild(style);
+// ─── CINEMATIC INTRO ───
+(function runIntro() {
+  const intro = qs('#intro');
+  const status = qs('#intro-status');
+  const lines = ['INITIALIZING...', 'Loading Assets...', 'Connecting...', 'Ready.'];
+  let i = 0;
+  const tick = () => {
+    if (i >= lines.length) {
+      setTimeout(() => {
+        intro.classList.add('fade-out');
+        setTimeout(() => { intro.style.display = 'none'; }, 850);
+        setTimeout(() => unlockAch('explorer', 'Explorer', '🌍'), 1200);
+      }, 400);
+      return;
+    }
+    status.textContent = lines[i++];
+    setTimeout(tick, i === 1 ? 2400 : 450);
+  };
+  setTimeout(tick, 200);
+})();
 
-                const toggle = panel.querySelector('#dec-toggle');
-                const controls = panel.querySelector('#dec-controls');
-                toggle.addEventListener('click', () => {
-                    const open = controls.style.display === 'block';
-                    controls.style.display = open ? 'none' : 'block';
-                    toggle.setAttribute('aria-expanded', String(!open));
-                    controls.setAttribute('aria-hidden', String(open));
-                });
+// ─── HERO TITLE ANIMATION ───
+(function animTitle() {
+  const el = qs('#hero-title');
+  const text = 'MORTAL GAMES';
+  el.innerHTML = text.split('').map((c, i) =>
+    c === ' ' ? ' ' : `<span class="char" style="animation-delay:${i*0.07}s">${c}</span>`
+  ).join('');
+})();
 
-                // Elements
-                const grid = panel.querySelector('#dec-grid');
-                const topo = panel.querySelector('#dec-topo');
-                const hue = panel.querySelector('#dec-hue');
-                const tilt = panel.querySelector('#dec-tilt');
-                const parallax = panel.querySelector('#dec-parallax');
-                const reset = panel.querySelector('#dec-reset');
+// ─── CUSTOM CURSOR ───
+const cursorRing = qs('#cursor-ring');
+const cursorDot = qs('#cursor-dot');
+let cx = -200, cy = -200, rx = -200, ry = -200;
+document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+(function animCursor() {
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  cursorRing.style.left = rx + 'px';
+  cursorRing.style.top = ry + 'px';
+  cursorDot.style.left = cx + 'px';
+  cursorDot.style.top = cy + 'px';
+  requestAnimationFrame(animCursor);
+})();
+document.querySelectorAll('a, button, .card, .fav-btn, .news-read, .hero-cta').forEach(el => {
+  el.addEventListener('mouseenter', () => cursorRing.classList.add('hover'));
+  el.addEventListener('mouseleave', () => cursorRing.classList.remove('hover'));
+});
 
-                // Handlers
-                const updateGrid = (v) => {
-                    document.body.style.backgroundSize = `${v}px ${v}px`;
-                };
-                const updateTopo = (v) => {
-                    // update the card-image-placeholder ::after opacity by setting a CSS variable
-                    document.documentElement.style.setProperty('--topo-opacity', String(v/100));
-                    // fallback update for existing elements
-                    document.querySelectorAll('.card-image-placeholder::after');
-                };
-                const updateHue = (v) => {
-                    // convert hue to tactical gold-ish by adjusting accent color
-                    const h = v;
-                    // set accent color using HSL to CSS variable
-                    document.documentElement.style.setProperty('--accent-color', `hsl(${h} 80% 52%)`);
-                    document.documentElement.style.setProperty('--accent-hover', `hsl(${h} 85% 62%)`);
-                };
-                const updateTilt = (v) => {
-                    document.documentElement.style.setProperty('--card-tilt', `${v}deg`);
-                    // apply tilt to cards
-                    document.querySelectorAll('.card').forEach(c => {
-                        c.style.transition = 'transform 0.25s ease';
-                        c.style.transform = `translateY(-5px) perspective(800px) rotateX(${v/3}deg) rotateY(${v/6}deg)`;
-                        // reset subtle hover
-                        c.addEventListener('mouseleave', () => c.style.transform = '');
-                    });
-                };
+// ─── PARTICLE CANVAS ───
+(function initParticles() {
+  const canvas = qs('#particle-canvas');
+  const ctx = canvas.getContext('2d');
+  const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+  resize();
+  addEventListener('resize', resize);
+  const STAR_COUNT = 120;
+  const stars = Array.from({ length: STAR_COUNT }, () => ({
+    x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+    r: Math.random() * 1.2 + 0.2, vx: (Math.random() - 0.5) * 0.12,
+    vy: (Math.random() - 0.5) * 0.12, a: Math.random()
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.x += s.vx; s.y += s.vy;
+      if (s.x < 0) s.x = canvas.width;
+      if (s.x > canvas.width) s.x = 0;
+      if (s.y < 0) s.y = canvas.height;
+      if (s.y > canvas.height) s.y = 0;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,212,224,${s.a * 0.7})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
-                // Parallax handler
-                let parallaxEnabled = false;
-                const enableParallax = (on) => {
-                    parallaxEnabled = on;
-                    const imgs = Array.from(document.querySelectorAll('.card-image-placeholder img, .card-image-placeholder'));
-                    if (on) {
-                        document.addEventListener('mousemove', parallaxMove);
-                        imgs.forEach(el => el.style.transition = 'transform 0.12s ease-out');
-                    } else {
-                        document.removeEventListener('mousemove', parallaxMove);
-                        imgs.forEach(el => el.style.transform = '');
-                    }
-                };
-                const parallaxMove = (e) => {
-                    const imgs = Array.from(document.querySelectorAll('.card-image-placeholder img, .card-image-placeholder'));
-                    const w = window.innerWidth, h = window.innerHeight;
-                    const cx = (e.clientX / w) - 0.5;
-                    const cy = (e.clientY / h) - 0.5;
-                    imgs.forEach(el => {
-                        const depth = el.tagName === 'IMG' ? 10 : 4;
-                        const tx = cx * depth;
-                        const ty = cy * depth;
-                        el.style.transform = `translate(${tx}px, ${ty}px) rotateX(${ -cy * 3 }deg) rotateY(${ cx * 3 }deg)`;
-                    });
-                };
+// ─── GLOBE CANVAS ───
+(function initGlobe() {
+  const canvas = qs('#globe-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 260, H = 260, R = 120, CX = W/2, CY = H/2;
+  let angle = 0;
+  // Simplified land masses as polygons on sphere (lon/lat in degrees)
+  const landMasses = [
+    // North America (rough)
+    [[-130,60],[-70,60],[-65,45],[-80,25],[-120,20],[-120,50]],
+    // South America
+    [[-80,10],[-35,0],[-40,-55],[-75,-55],[-80,0]],
+    // Europe
+    [[0,45],[35,60],[30,45],[10,35],[-10,35]],
+    // Africa
+    [[15,30],[50,10],[40,-35],[20,-35],[15,0],[0,15]],
+    // Asia
+    [[35,60],[140,60],[150,40],[100,10],[60,20],[40,40]],
+    // Australia
+    [[115,-20],[150,-20],[150,-40],[120,-40]],
+  ];
 
-                // Wire inputs
-                grid.addEventListener('input', (e) => updateGrid(e.target.value));
-                topo.addEventListener('input', (e) => updateTopo(e.target.value));
-                hue.addEventListener('input', (e) => updateHue(e.target.value));
-                tilt.addEventListener('input', (e) => updateTilt(e.target.value));
-                parallax.addEventListener('change', (e) => enableParallax(e.target.checked));
-                reset.addEventListener('click', () => {
-                    grid.value = 30; topo.value = 30; hue.value = 42; tilt.value = 5; parallax.checked = false;
-                    updateGrid(30); updateTopo(30); updateHue(42); updateTilt(5); enableParallax(false);
-                    showNotification('Decorations reset to defaults.');
-                });
+  function project(lon, lat, rot) {
+    const lonR = (lon + rot) * Math.PI / 180;
+    const latR = lat * Math.PI / 180;
+    const x = R * Math.cos(latR) * Math.sin(lonR);
+    const y = -R * Math.sin(latR);
+    const z = R * Math.cos(latR) * Math.cos(lonR);
+    if (z < -10) return null;
+    return { x: CX + x, y: CY + y, visible: z > 0 };
+  }
 
-                // Initialize CSS variable for topo opacity and card tilt
-                document.documentElement.style.setProperty('--topo-opacity', '0.3');
-                document.documentElement.style.setProperty('--card-tilt', '5deg');
+  function drawGlobe() {
+    ctx.clearRect(0, 0, W, H);
+    // Globe background
+    const grad = ctx.createRadialGradient(CX-30, CY-30, 5, CX, CY, R);
+    grad.addColorStop(0, '#1a2a3a');
+    grad.addColorStop(0.5, '#0d1a28');
+    grad.addColorStop(1, '#060c14');
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2);
+    ctx.fillStyle = grad; ctx.fill();
 
-                // Small persistent storage for panel prefs
-                const DEC_KEY = 'mg:decoration:v1';
-                const savePrefs = () => {
-                    const prefs = { grid: grid.value, topo: topo.value, hue: hue.value, tilt: tilt.value, parallax: parallax.checked };
-                    try { localStorage.setItem(DEC_KEY, JSON.stringify(prefs)); } catch {}
-                };
-                const loadPrefs = () => {
-                    try {
-                        const p = JSON.parse(localStorage.getItem(DEC_KEY) || '{}');
-                        if (p.grid) grid.value = p.grid;
-                        if (p.topo) topo.value = p.topo;
-                        if (p.hue) hue.value = p.hue;
-                        if (p.tilt) tilt.value = p.tilt;
-                        if (typeof p.parallax === 'boolean') parallax.checked = p.parallax;
-                        updateGrid(grid.value); updateTopo(topo.value); updateHue(hue.value); updateTilt(tilt.value); enableParallax(parallax.checked);
-                    } catch {}
-                };
-                // autosave on change
-                [grid, topo, hue, tilt, parallax].forEach(el => el.addEventListener('input', savePrefs));
-                parallax.addEventListener('change', savePrefs);
+    // Atmosphere glow
+    const atmo = ctx.createRadialGradient(CX, CY, R-10, CX, CY, R+8);
+    atmo.addColorStop(0, 'rgba(212,168,67,0.08)');
+    atmo.addColorStop(1, 'transparent');
+    ctx.beginPath(); ctx.arc(CX, CY, R+8, 0, Math.PI*2);
+    ctx.fillStyle = atmo; ctx.fill();
 
-                loadPrefs();
-            };
+    // Grid lines
+    ctx.strokeStyle = 'rgba(30,42,56,0.5)';
+    ctx.lineWidth = 0.5;
+    for (let lon = -180; lon <= 180; lon += 30) {
+      ctx.beginPath(); let started = false;
+      for (let lat = -90; lat <= 90; lat += 5) {
+        const p = project(lon, lat, angle);
+        if (!p || !p.visible) { started = false; continue; }
+        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+    for (let lat = -60; lat <= 60; lat += 30) {
+      ctx.beginPath(); let started = false;
+      for (let lon = -180; lon <= 180; lon += 5) {
+        const p = project(lon, lat, angle);
+        if (!p || !p.visible) { started = false; continue; }
+        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
 
-            // Inject CSS patch for topographic overlay variable usage
-            const injectTopoCSS = () => {
-                const s = document.createElement('style');
-                s.textContent = `
-                    .card-image-placeholder::after {
-                        background-image: 
-                            radial-gradient(ellipse at 20% 30%, transparent 20%, rgba(210, 153, 34, 0.1) 21%, transparent 22%),
-                            radial-gradient(ellipse at 80% 70%, transparent 30%, rgba(210, 153, 34, 0.1) 31%, transparent 32%);
-                        opacity: var(--topo-opacity, 0.3);
-                        transition: opacity 0.18s linear;
-                    }
-                `;
-                document.head.appendChild(s);
-            };
+    // Land masses
+    landMasses.forEach(poly => {
+      const points = poly.map(([lo, la]) => project(lo, la, angle)).filter(Boolean);
+      if (points.length < 3) return;
+      const vis = points.filter(p => p.visible);
+      if (vis.length < 2) return;
+      ctx.beginPath();
+      let first = true;
+      points.forEach(p => {
+        if (!p.visible) { first = true; return; }
+        if (first) { ctx.moveTo(p.x, p.y); first = false; }
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(34,80,50,0.7)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(60,130,80,0.4)';
+      ctx.lineWidth = 0.8; ctx.stroke();
+    });
 
-            injectTopoCSS();
-            createControlPanel();
+    // Terminator shadow
+    const shadowGrad = ctx.createLinearGradient(CX+R*0.3, CY-R, CX+R, CY+R);
+    shadowGrad.addColorStop(0, 'transparent');
+    shadowGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2);
+    ctx.fillStyle = shadowGrad; ctx.fill();
+    ctx.restore();
 
-        });
-    </script>
+    // Globe border
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(212,168,67,0.15)'; ctx.lineWidth = 1; ctx.stroke();
+
+    angle += 0.25;
+    requestAnimationFrame(drawGlobe);
+  }
+  drawGlobe();
+
+  // Mouse drag
+  let dragging = false, lastX = 0;
+  canvas.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; });
+  addEventListener('mouseup', () => dragging = false);
+  addEventListener('mousemove', e => {
+    if (!dragging) return;
+    angle += (e.clientX - lastX) * 0.3;
+    lastX = e.clientX;
+  });
+})();
+
+// ─── RADAR ───
+(function initRadar() {
+  const canvas = qs('#radar-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 220, H = 220, CX = 110, CY = 110, R = 105;
+  let sweep = 0;
+
+  const blipContainer = qs('#radar-blips');
+  const blipData = [
+    { x: '35%', y: '40%', delay: 0 },
+    { x: '65%', y: '55%', delay: 0.8 },
+    { x: '50%', y: '25%', delay: 1.6 },
+    { x: '75%', y: '70%', delay: 2.4 },
+    { x: '30%', y: '70%', delay: 1.2 },
+  ];
+  blipData.forEach(b => {
+    const el = document.createElement('div');
+    el.className = 'blip';
+    el.style.left = b.x; el.style.top = b.y;
+    el.style.animationDelay = b.delay + 's';
+    blipContainer.appendChild(el);
+  });
+
+  function drawRadar() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2);
+    ctx.clip();
+
+    // Background
+    ctx.fillStyle = '#030806';
+    ctx.fillRect(0, 0, W, H);
+
+    // Concentric rings
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      ctx.beginPath(); ctx.arc(CX, CY, R*f, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,255,127,${0.08 + f*0.05})`; ctx.lineWidth = 1; ctx.stroke();
+    });
+
+    // Crosshairs
+    ctx.strokeStyle = 'rgba(0,255,127,0.08)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(CX-R, CY); ctx.lineTo(CX+R, CY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(CX, CY-R); ctx.lineTo(CX, CY+R); ctx.stroke();
+
+    // Sweep
+    const sweepAngle = (sweep * Math.PI) / 180;
+    const gradient = ctx.createConicalGradient
+      ? ctx.createConicalGradient(CX, CY, sweepAngle)
+      : null;
+
+    // Sweep line
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.lineTo(CX + Math.cos(sweepAngle) * R, CY + Math.sin(sweepAngle) * R);
+    ctx.strokeStyle = 'rgba(0,255,127,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Sweep trail (arc)
+    const trailStart = sweepAngle - 1.2;
+    const trailGrad = ctx.createLinearGradient(CX, CY - R, CX, CY + R);
+    trailGrad.addColorStop(0, 'transparent');
+    trailGrad.addColorStop(1, 'rgba(0,255,127,0.04)');
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, trailStart, sweepAngle);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,255,127,0.05)';
+    ctx.fill();
+
+    ctx.restore();
+
+    // Center dot
+    ctx.beginPath(); ctx.arc(CX, CY, 3, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,255,127,0.6)'; ctx.fill();
+
+    sweep = (sweep + 1.5) % 360;
+    requestAnimationFrame(drawRadar);
+  }
+  drawRadar();
+})();
+
+// ─── STATS COUNTER ───
+(function initStats() {
+  const items = qsa('.stat-num[data-target]');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      obs.unobserve(e.target);
+      const target = parseInt(e.target.dataset.target);
+      let start = 0;
+      const step = target / 80;
+      const timer = setInterval(() => {
+        start = Math.min(start + step, target);
+        e.target.textContent = Math.floor(start).toLocaleString();
+        if (start >= target) { clearInterval(timer); e.target.textContent = target.toLocaleString(); }
+      }, 20);
+    });
+  }, { threshold: 0.5 });
+  items.forEach(el => obs.observe(el));
+})();
+
+// ─── INTERACTIVE 3D CARDS ───
+qsa('.card').forEach(card => {
+  const shine = card.querySelector('.card-shine');
+
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * 100;
+    const my = ((e.clientY - rect.top) / rect.height) * 100;
+    const rx = (e.clientY - rect.top - rect.height / 2) / rect.height * -18;
+    const ry = (e.clientX - rect.left - rect.width / 2) / rect.width * 18;
+    card.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(6px)`;
+    if (shine) shine.style.setProperty('--mx', mx + '%');
+    if (shine) shine.style.setProperty('--my', my + '%');
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+});
+
+// ─── FAVOURITES ───
+const FAVS_KEY = 'mg:favs:v2';
+const favs = new Set(JSON.parse(localStorage.getItem(FAVS_KEY) || '[]'));
+const saveFavs = () => localStorage.setItem(FAVS_KEY, JSON.stringify([...favs]));
+
+qsa('.fav-btn').forEach(btn => {
+  const card = btn.closest('.card');
+  const id = card.dataset.title;
+  const update = () => {
+    const on = favs.has(id);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '★' : '☆';
+  };
+  update();
+  btn.addEventListener('click', () => {
+    if (favs.has(id)) { favs.delete(id); toast(`Removed from favourites: ${id}`); }
+    else { favs.add(id); toast(`Added to favourites: ${id}`); }
+    saveFavs(); update();
+  });
+});
+
+if (favs.size) toast(`${favs.size} favourite(s) restored from last session.`);
+
+// ─── SIMULATED DOWNLOAD ───
+qsa('.btn-play').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const game = btn.dataset.game;
+    const card = btn.closest('.card');
+    const barWrap = card.querySelector('.download-bar-wrap');
+    const barFill = card.querySelector('.download-bar-fill');
+    const label = card.querySelector('.download-label');
+
+    if (btn.dataset.running) return;
+    btn.dataset.running = '1';
+    btn.textContent = '⬇ Downloading...';
+    btn.style.background = '#1a2832';
+    btn.style.color = 'var(--gold)';
+    barWrap.style.display = 'block';
+    label.style.display = 'block';
+
+    let pct = 0;
+    const iv = setInterval(() => {
+      pct += Math.random() * 4 + 1;
+      if (pct >= 100) {
+        pct = 100; clearInterval(iv);
+        barFill.style.width = '100%';
+        label.textContent = '✓ INSTALLED';
+        label.style.color = '#27ae60';
+        btn.textContent = '▶ Play Now';
+        btn.style.background = '#27ae60';
+        btn.style.color = '#fff';
+        delete btn.dataset.running;
+        toast(`${game} installation complete!`);
+        unlockAch('installer', 'Commander', '🎖');
+      } else {
+        barFill.style.width = pct.toFixed(0) + '%';
+        label.textContent = `Downloading... ${pct.toFixed(0)}%`;
+      }
+    }, 80);
+
+    toast(`Starting download for [${game}]...`);
+    unlockAch('downloader', 'Logistics Officer', '📦');
+  });
+});
+
+// ─── SEARCH ───
+const searchInput = qs('#site-search');
+const cards = qsa('.card');
+searchInput.addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  cards.forEach(card => {
+    const title = (card.dataset.title || '').toLowerCase();
+    const desc = (card.querySelector('.card-desc')?.textContent || '').toLowerCase();
+    card.style.display = (!q || title.includes(q) || desc.includes(q)) ? '' : 'none';
+  });
+});
+
+// ─── MODAL ───
+const modalBackdrop = qs('#modal-backdrop');
+const modalTitle = qs('#modal-title');
+const modalBody = qs('#modal-body');
+const modalClose = qs('#modal-close');
+
+function openModal(title, body) {
+  modalTitle.textContent = title;
+  modalBody.textContent = body;
+  modalBackdrop.classList.add('show');
+  modalBackdrop.setAttribute('aria-hidden', 'false');
+}
+function closeModal() {
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+}
+
+qsa('.card-image').forEach(img => {
+  img.addEventListener('click', () => {
+    const card = img.closest('.card');
+    openModal(card.dataset.title, img.dataset.preview || 'Preview unavailable');
+    unlockAch('scout', 'Scout', '🔍');
+  });
+});
+qsa('.btn-details').forEach(btn => {
+  btn.addEventListener('click', () => {
+    openModal(btn.dataset.game, `[ ${btn.dataset.game} ] — Full details coming soon in the next update.`);
+  });
+});
+modalClose.addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', e => { if (e.target === modalBackdrop) closeModal(); });
+
+// ─── TIMELINE SCROLL REVEAL ───
+(function initTimeline() {
+  const items = qsa('.timeline-item');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), 150);
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.3 });
+  items.forEach(el => obs.observe(el));
+})();
+
+// ─── MUSIC TOGGLE ───
+let musicOn = false;
+let audioCtx = null;
+let oscillators = [];
+const musicBtn = qs('#music-btn');
+
+function startMusic() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const notes = [110, 138.6, 165, 184, 220];
+  const master = audioCtx.createGain();
+  master.gain.value = 0.06;
+  master.connect(audioCtx.destination);
+
+  notes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = 0.5 - i * 0.08;
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start();
+    oscillators.push(osc);
+  });
+  toast('Tactical audio enabled.');
+}
+function stopMusic() {
+  oscillators.forEach(o => { try { o.stop(); } catch(e){} });
+  oscillators = [];
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  toast('Audio disabled.');
+}
+
+musicBtn.addEventListener('click', () => {
+  musicOn = !musicOn;
+  musicBtn.textContent = musicOn ? '🔊 ON' : '🔊 OFF';
+  musicOn ? startMusic() : stopMusic();
+});
+
+// ─── KEYBOARD SHORTCUTS ───
+let eggBuffer = '';
+document.addEventListener('keydown', e => {
+  // Search focus
+  if (e.key === '/' && document.activeElement !== searchInput) {
+    e.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+    return;
+  }
+  // Close modal
+  if (e.key === 'Escape') {
+    closeModal();
+    eggBuffer = '';
+    qs('#egg-overlay').classList.remove('active');
+    return;
+  }
+  // Favourite shortcut
+  if (e.key.toLowerCase() === 'f' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+    const first = cards.find(c => c.style.display !== 'none');
+    if (first) {
+      const id = first.dataset.title;
+      if (favs.has(id)) { favs.delete(id); toast(`Removed favourite: ${id}`); }
+      else { favs.add(id); toast(`Added favourite: ${id}`); }
+      saveFavs();
+      qsa('.fav-btn').forEach(b => {
+        const c = b.closest('.card');
+        const on = favs.has(c.dataset.title);
+        b.classList.toggle('active', on);
+        b.textContent = on ? '★' : '☆';
+      });
+    }
+    return;
+  }
+
+  // Easter egg buffer
+  if (e.key.length === 1) {
+    eggBuffer = (eggBuffer + e.key.toUpperCase()).slice(-10);
+    checkEasterEggs();
+  }
+});
+
+// ─── EASTER EGGS ───
+const eggOverlay = qs('#egg-overlay');
+const eggText = qs('#egg-text');
+qs('#egg-close').addEventListener('click', () => {
+  eggOverlay.classList.remove('active');
+  eggOverlay.className = '';
+  eggBuffer = '';
+});
+
+function triggerEgg(cls, msg, achId, achName, achIcon) {
+  eggOverlay.className = `active ${cls}`;
+  eggText.textContent = msg;
+  setTimeout(() => { eggOverlay.classList.remove('active'); eggOverlay.className = ''; }, 5000);
+  unlockAch(achId, achName, achIcon);
+  eggBuffer = '';
+}
+
+function checkEasterEggs() {
+  if (eggBuffer.includes('HOI4')) triggerEgg('egg-hoi4', '⚡ WWII MODE ACTIVATED ⚡\nFor the Fatherland', 'hoi4', 'Warlord', '⚔️');
+  else if (eggBuffer.includes('PARADOX')) triggerEgg('egg-paradox', '🌊 PARADOX PROTOCOL\nDiplomacy Unlocked', 'paradox', 'Grand Duke', '👑');
+  else if (eggBuffer.includes('MORTAL')) triggerEgg('egg-mortal', '💀 MORTAL MODE\nYou Found the Code', 'mortal', 'Mortal', '💀');
+}
+
+// ─── CONTROL PANEL ───
+(function initControls() {
+  const toggle = qs('#ctrl-toggle');
+  const box = qs('#ctrl-box');
+  toggle.addEventListener('click', () => box.classList.toggle('open'));
+
+  const PREFS = 'mg:prefs:v1';
+  const load = () => { try { return JSON.parse(localStorage.getItem(PREFS) || '{}'); } catch { return {}; } };
+  const save = (p) => localStorage.setItem(PREFS, JSON.stringify(p));
+
+  const prefs = load();
+
+  const cGrid = qs('#c-grid');
+  const cHue = qs('#c-hue');
+  const cGlow = qs('#c-glow');
+  const cScan = qs('#c-scan');
+
+  if (prefs.grid) cGrid.value = prefs.grid;
+  if (prefs.hue) cHue.value = prefs.hue;
+  if (prefs.glow) cGlow.value = prefs.glow;
+  if (prefs.scan) cScan.value = prefs.scan;
+
+  const applyGrid = v => root.style.setProperty('--grid-sz', v + 'px');
+  const applyHue = v => {
+    root.style.setProperty('--gold', `hsl(${v},72%,55%)`);
+    root.style.setProperty('--gold2', `hsl(${v},80%,68%)`);
+    root.style.setProperty('--gold-dim', `hsla(${v},72%,55%,0.12)`);
+  };
+  const applyGlow = v => {
+    root.style.setProperty('--card-glow-op', String(v/100));
+  };
+  const applyScan = v => {
+    document.querySelector('.bg-scan').style.animationDuration = v + 's';
+  };
+
+  // Apply loaded prefs
+  applyGrid(cGrid.value); applyHue(cHue.value); applyGlow(cGlow.value); applyScan(cScan.value);
+
+  cGrid.addEventListener('input', e => { applyGrid(e.target.value); save({...load(), grid: e.target.value}); });
+  cHue.addEventListener('input', e => { applyHue(e.target.value); save({...load(), hue: e.target.value}); });
+  cGlow.addEventListener('input', e => { applyGlow(e.target.value); save({...load(), glow: e.target.value}); });
+  cScan.addEventListener('input', e => { applyScan(e.target.value); save({...load(), scan: e.target.value}); });
+
+  qs('#c-reset').addEventListener('click', () => {
+    cGrid.value = 28; cHue.value = 42; cGlow.value = 40; cScan.value = 8;
+    applyGrid(28); applyHue(42); applyGlow(40); applyScan(8);
+    localStorage.removeItem(PREFS);
+    toast('Visual controls reset to defaults.');
+  });
+})();
+
+// ─── RANDOM ACHIEVEMENT POPUP ───
+setTimeout(() => {
+  if (!achievements.has('visitor')) {
+    unlockAch('visitor', 'Visitor', '👁');
+  }
+}, 8000);
+
+// ─── PARALLAX ON SCROLL ───
+window.addEventListener('scroll', () => {
+  const y = scrollY;
+  const hero = qs('.hero');
+  if (hero) hero.style.transform = `translateY(${y * 0.25}px)`;
+  const rays = qs('.hero-rays');
+  if (rays) rays.style.transform = `translateY(${y * 0.1}px) rotate(${y * 0.02}deg)`;
+}, { passive: true });
+</script>
 </body>
 </html>
