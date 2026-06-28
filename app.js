@@ -30,26 +30,7 @@ function unlockAch(id, name, icon = '🏆') {
   setTimeout(() => achEl.classList.remove('show'), 4000);
 }
 
-// ─── CINEMATIC INTRO ───
-(function runIntro() {
-  const intro = qs('#intro');
-  const status = qs('#intro-status');
-  const lines = ['INITIALIZING...', 'Loading Assets...', 'Connecting...', 'Ready.'];
-  let i = 0;
-  const tick = () => {
-    if (i >= lines.length) {
-      setTimeout(() => {
-        intro.classList.add('fade-out');
-        setTimeout(() => { intro.style.display = 'none'; }, 850);
-        setTimeout(() => unlockAch('explorer', 'Explorer', '🌍'), 1200);
-      }, 400);
-      return;
-    }
-    status.textContent = lines[i++];
-    setTimeout(tick, i === 1 ? 2400 : 450);
-  };
-  setTimeout(tick, 200);
-})();
+
 
 // ─── HERO TITLE ANIMATION ───
 (function animTitle() {
