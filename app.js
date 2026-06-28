@@ -326,17 +326,19 @@ if (favs.size) toast(`${favs.size} favourite(s) restored from last session.`);
 qsa('.btn-play').forEach(btn => {
   btn.addEventListener('click', () => {
     const game = btn.dataset.game;
-    const card = btn.closest('.card');
+    const downloadUrl = btn.dataset.download;
 
-    // If game is in beta, indicate launch attempt, otherwise open details/launch
-    if (card.querySelector('.card-badge.new') || card.querySelector('.card-status.beta')) {
-      toast(`Attempting to launch ${game} (Beta)…`);
-      // Minimal placeholder behaviour: open details modal for beta builds
-      const details = card.querySelector('.card-desc')?.textContent || 'Beta build — limited access.';
-      openModal(game + ' — Beta', details);
+    if (downloadUrl) {
+      toast(`⬇ Downloading ${game}… Stand by.`);
+      unlockAch('downloader', 'Operative', '⬇');
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } else {
-      toast(`Launching ${game}...`);
-      openModal(game, 'Launching session — connecting to deployment.');
+      toast(`${game} — No build available yet.`, 'error');
     }
   });
 });
