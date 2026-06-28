@@ -328,15 +328,10 @@ qsa('.btn-play').forEach(btn => {
     const game = btn.dataset.game;
     const downloadUrl = btn.dataset.download;
 
-    if (downloadUrl) {
+if (downloadUrl) {
       toast(`⬇ Downloading ${game}… Stand by.`);
       unlockAch('downloader', 'Operative', '⬇');
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = '';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      window.open(downloadUrl, '_blank');
     } else {
       toast(`${game} — No build available yet.`, 'error');
     }
@@ -374,8 +369,6 @@ function closeModal() {
 
 qsa('.card-image').forEach(img => {
   img.addEventListener('click', () => {
-    const card = img.closest('.card');
-    openModal(card.dataset.title, img.dataset.preview || 'Preview unavailable');
     unlockAch('scout', 'Scout', '🔍');
   });
 });
